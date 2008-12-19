@@ -1,0 +1,26 @@
+SetEnv COMETDESKTOP_ROOT "/home/cometdesktop/"
+
+Options -Indexes -Includes
+
+DirectoryIndex index.pl index.html
+
+RedirectMatch 403 /\.
+RedirectMatch 403 externals.txt
+RedirectMatch 403 \.(pm|meta)$
+RedirectMatch 403 \.conf$
+RedirectMatch 403 \.sql$
+RedirectMatch 403 ^/conf
+
+ErrorDocument 403 /error.pl?403
+ErrorDocument 404 /error.pl?404
+ErrorDocument 500 /error.pl?500
+
+# can be overridden, in system/login for example
+<Filesmatch "\.js$">
+    Deny from All
+</Filesmatch>
+
+<Filesmatch "/error\.pl$">
+    Allow from All
+</Filesmatch>
+
