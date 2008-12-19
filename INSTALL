@@ -1,0 +1,21 @@
+
+Comet Desktop
+http://code.google.com/p/cometdesktop/
+
+
+
+Quick and dirty install
+
+edit .htaccess
+set the COMETDESKTOP_ROOT to the root dir of the cometdesktop installtion
+
+import the database
+$ echo 'create database cometdesktop' | mysql -u root mysql
+$ mysql -u root cometdesktop < conf/install.sql
+
+edit conf/desktop.conf to suit
+
+main.conf just loads conf/desktop.conf, you can move
+the conf dir out of your document root and change the path in main.conf
+
+
