@@ -520,8 +520,10 @@ sub updateWithHash {
 			push @querylist, qq($key=NULL);
 		} elsif ($$hash{$key} eq "NULL") {
 			push @querylist, qq($key=NULL);
-		} elsif ($$hash{$key} =~ /^_raw:(.+)$/) {
-			push @querylist, qq($key=$1);
+		} elsif ($$hash{$key} =~ /^NOW\(\)$/) {
+			push @querylist, "$key=NOW()";
+#		} elsif ($$hash{$key} =~ /^_raw:(.+)$/) {
+#			push @querylist, qq($key=$1);
 		} else {
 			push @querylist, qq($key=?);
 			push @values, $$hash{$key};
