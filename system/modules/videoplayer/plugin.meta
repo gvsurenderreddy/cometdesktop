@@ -1,0 +1,15 @@
+{
+    license => 'GPLv3',
+    author => 'David W Davis, http://xant.us/',
+    moduleId => 'videoplayer',
+    moduleType => 'app',
+    pkg => 'QoDesk.VideoPlayer',
+    iconCls => 'videoplayer-icon',
+    shortcutIconCls => 'videoplayer-shortcut',
+    text => 'Video Player',
+    tooltip => '<b>Video Player</b><br />Play videos using the Adobe flash player',
+    files => [
+        'videoplayer.css',
+        'videoplayer.js'
+    ]
+}

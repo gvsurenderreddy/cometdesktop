@@ -1,0 +1,38 @@
+body {
+    background: url(../../resources/wallpapers/blue-swirl.jpg);
+	background-color: #000;
+}
+.lock-icon {
+    background-image: url(encrypted.png) !important;
+    background-color:transparent;
+    background-position:center center;
+    background-repeat:no-repeat;
+}
+#login-win .x-window-mc {
+	background:#fff none;
+	border:1px solid #eee;
+}
+#login-logo {
+	background:#f9f9f9 none;
+    text-align: center;
+/*	background:#f9f9f9 url(logo.jpg) no-repeat center center; */
+}
+#login-form .x-plain-body {
+	background:#f9f9f9 none;
+	color:#222;
+	padding:5px 0  0 45px ;
+}
+#login-win .x-window-body {
+	background:#FFFFFF none repeat scroll 0%;
+	border:1px solid #99BBE8;
+}
+.msg .x-box-mc {
+    font-size:14px;
+}
+#msg-div {
+    position:absolute;
+    left:35%;
+    top:10px;
+    width:250px;
+    z-index:20000;
+}

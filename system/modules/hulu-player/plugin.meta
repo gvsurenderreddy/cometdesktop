@@ -1,0 +1,15 @@
+{
+    license => 'GPLv3',
+    author => 'David W Davis, http://xant.us/',
+    moduleId => 'hulu-player',
+    moduleType => 'app',
+    pkg => 'QoDesk.HuluPlayer',
+    iconCls => 'hulu-player-icon',
+    shortcutIconCls => 'hulu-player-shortcut',
+    text => 'Hulu TV',
+    tooltip => '<b>Hulu TV</b><br />Play TV episodes, movies, and clips from Hulu.com',
+    files => [
+        'hulu-player.css',
+        'hulu-player.js'
+    ]
+}

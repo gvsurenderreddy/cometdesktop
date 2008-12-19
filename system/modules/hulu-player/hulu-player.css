@@ -1,0 +1,103 @@
+.hulu-player-shortcut img {
+    background-image: url(images/mediaplayer48x48.png);
+    filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='system/modules/hulu-player/images/mediaplayer48x48.png', sizingMethod='scale');
+}
+.hulu-player-icon {
+    background-image: url(images/mediaplayer16x16.png)  !important;
+    background-color:transparent;
+    background-position:center center;
+    background-repeat:no-repeat;
+}
+.hulu-player-forward-button {
+    background-image: url(images/forward16x16.png)  !important;
+    background-color:transparent;
+    background-position:center center;
+    background-repeat:no-repeat;
+}
+.hulu-player-back-button {
+    background-image: url(images/back16x16.png)  !important;
+    background-color:transparent;
+    background-position:center center;
+    background-repeat:no-repeat;
+}
+.hulu-player-home-button {
+    background-image: url(images/home16x16.png)  !important;
+    background-color:transparent;
+    background-position:center center;
+    background-repeat:no-repeat;
+}
+.hulu-player-starred-button {
+    background-image: url(images/redstar16x16.png)  !important;
+    background-color:transparent;
+    background-position:center center;
+    background-repeat:no-repeat;
+}
+.hulu-player-favorite-button {
+    background-image: url(images/favorite16x16.png)  !important;
+    background-color:transparent;
+    background-position:center center;
+    background-repeat:no-repeat;
+}
+
+.hulu-player-check-col {
+    background-image:url(images/yellowstar16x16.png);
+    background-color:transparent;
+    background-position:center center;
+    background-repeat:no-repeat;
+}
+
+.hulu-player-check-col-on {
+    background-color:transparent;
+    background-image:url(images/redstar16x16.png);
+    background-position:center center;
+    background-repeat:no-repeat;
+}
+
+.hulu-player-nav-header {
+    background-image: url(images/huluTM_130.jpg) !important;
+	width:130px;
+	height:60px;
+}
+
+.hulu-player-card-shortcut {
+    background-image: url(images/mediaplayer32x32.png)  !important;
+    filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='system/modules/hulu-player/images/mediaplayer32x32.png', sizingMethod='scale');
+}
+
+.hulu-player-quicktip {
+    font-size:13px;
+    font-family:tahoma,arial,verdana,sans-serif;
+}
+
+.hulu-player-quicktip img {
+    padding: 5px;
+    border: 1px solid black;
+}
+
+.hulu-player-quicktip p {
+    padding: 5px;
+}
+
+.hulu-player-card-0 .x-panel-body li {
+	margin:3px;
+	margin-bottom:10px;
+}
+
+.hulu-player-card-0 .x-panel-body li img {
+	width:32px;
+	height:32px;
+	vertical-align:middle;
+	margin-right:7px;
+	margin-bottom:2px;
+}
+
+.hulu-player-card-0 .x-panel-body li a {
+	text-decoration:none;
+	color:#336699;
+	font-weight:bold;
+}
+
+.hulu-player-card-0 .x-panel-body li span {
+	padding-left:55px;
+}
+
