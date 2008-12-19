@@ -1,0 +1,2 @@
+ext-2.2 http://svn.xantus.org/priv/trunk/js-ext/ext-2.2
+Sprocket http://svn.xantus.org/ext-ux/lib/Sprocket
