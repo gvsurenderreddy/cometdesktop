@@ -25,15 +25,17 @@ __PACKAGE__->mk_accessors(qw(
     plugins
     login_secret
     session_secret
-    version
     pwd
+    version
+    revision
     localmode
     extra_security
+    main_conf
+    ga_account
 ));
 
-use Carp qw( croak );
-
 our $singleton;
+our $VERSION = '0.9';
 
 sub import {
     shift;
@@ -49,7 +51,7 @@ sub import {
     }
 
     # load the config and set optional include dirs before loading any modules
-    CometDesktop->new() unless ( defined( $singleton ) );
+    CometDesktop->new( imported_pkg => $package ) unless ( defined( $singleton ) );
 
     unshift( @modules, 'Common', '-Time::HiRes[time]' );
 
@@ -70,13 +72,13 @@ sub import {
         }
     }
 
-    @failed and croak 'could not import (' . join( ' ', @failed ) . ')';
+    @failed and die 'could not import (' . join( ' ', @failed ) . ')';
 }
 
 
 sub new {
     my $class = shift;
-    croak "$class requires an even number of parameters" if @_ % 2;
+    die "$class requires an even number of parameters" if @_ % 2;
     return $singleton if ( $singleton );
     
     # FindBin?
@@ -90,10 +92,14 @@ sub new {
         pwd => $pwd,
         localmode => 0,
         extra_security => 0,
+        main_conf => $pwd.'main.conf',
+        ga_account => undef,
+        version => $VERSION,
+        revision => '',
         @_
     });
    
-    my $err = $self->load_config( $pwd.'main.conf' );
+    my $err = $self->load_config( $self->main_conf );
     $err->throw if ( $err );
    
     # db_user and db_pass are optional depending on the DBD
@@ -102,8 +108,11 @@ sub new {
     }
 
     require CometDesktop::Common;
+    import CometDesktop::Common;
    
-    $self->get_svn_version() if ( $self->{use_svn_version} );
+    $self->get_svn_revision() if ( $self->{use_svn_revision} );
+
+    $self->version( $VERSION.$self->revision );
     
     $self->plugins( {} ) unless ( $self->plugins );
     
@@ -136,17 +145,17 @@ sub new {
     return $self;
 }
 
-sub get_svn_version {
+sub get_svn_revision {
     my $self = shift;
 
     my $file = $self->pwd.'.svn/entries';
     
-    return $self->version( '1' ) unless ( -e $file );
+    return unless ( -e $file );
 
     my @data = split( "\n", slurp( $file ) );
-    return $self->version( '1' ) unless ( @data && $data[3] );
+    return unless ( @data && $data[3] );
 
-    return $self->version( $data[3] );
+    return $self->revision( 'r'.$data[3] );
 }
 
 # never use a cookie directly, verify it's good first
@@ -214,13 +223,12 @@ sub css_includes {
         push( @files, '<link id="theme" rel="stylesheet" type="text/css" href="'.$h->{path}.'?v='.$self->version.'" />' );
     }
 
-    @t = ();
-
-    # union?
-    $self->db->arrayHashQuery(qq|SELECT path, name FROM qo_files WHERE type=? AND active='true' ORDER BY id|,['css'],\@t);
+    # reusing @t
+    # TODO union
+    @t = $self->db->arrayHashQuery(qq|SELECT path, name FROM qo_files WHERE type='css' AND active='true' ORDER BY id|);
     return '' if ( $self->db->{error} );
     
-    $self->db->arrayHashQuery(qq|SELECT path, name FROM qo_dialogs WHERE type=?|,['css'],\@t);
+    push( @t, $self->db->arrayHashQuery(qq|SELECT path, name FROM qo_dialogs WHERE type='css'|) );
     return '' if ( $self->db->{error} );
 
     $self->db->arrayHashQuery(qq|
@@ -250,14 +258,14 @@ sub call_plugin {
     my $modules = {};
     $self->db->keyvalHashQuery(qq|
     SELECT
-        m.moduleId, 1
+        M.moduleId, 1
     FROM
-        qo_groups_has_modules AS gm
-            INNER JOIN qo_modules AS m
-                ON m.id=gm.qo_modules_id AND m.active='true'
+        qo_groups_has_modules AS GM
+            INNER JOIN qo_modules AS M
+                ON M.id=GM.qo_modules_id AND M.active='true'
     WHERE
-        gm.qo_groups_id=?
-    |,[ $self->user->group_id ],$modules);
+        GM.qo_groups_id=?
+    |,[$self->user->group_id],$modules);
     if ( $self->db->{error} ) {
         warn $self->db->{error};
         return 0;
@@ -266,8 +274,9 @@ sub call_plugin {
     $modules->{'ajax-db'} = 1;
     
     if ( !exists( $modules->{$module} ) ) {
-        if ( $module eq 'remote-load' ) {
+        if ( $module eq 'on-demand' ) {
             warn "User tried to get the source for an unauthorized module: $module\n";
+
             print "/* unauthorized */";
             return 1;
         } else {
@@ -284,34 +293,43 @@ sub call_plugin {
     }
     return unless ( $data->{path} );
 
-    if ( $task eq 'remote-load' && $what eq 'src' ) {
+    if ( $task eq 'on-demand' && $what eq 'src' ) {
         my $path = $self->pwd;
         if ( -e $path.$data->{path}.'plugin.meta' ) {
             my $meta = slurp( $path.$data->{path}.'plugin.meta' );
         
             my $metadata = eval $meta;
-            unless ( $@ ) {
-                unless ( $metadata->{files} && ref( $metadata->{files} ) eq 'ARRAY' ) {
-                    print "/* nothing to load */\n";
-                    return 1;
-                }
-                foreach ( @{$metadata->{files}} ) {
-                    next unless ( m/\.js$/ );
-                    if ( -e $path.$data->{path}.$_ ) {
-                        my $src = slurp( $path.$data->{path}.$_ );
-                        if ( $self->user->group_id == 1 ) {
-                            print "/* $data->{path}$_ */\n";
-                            print $src;
-                        } else {
-                            print $self->js_compress($src);
-                        }
-                    } else {
-                        print "/* $data->{path}$_ not found */\n";
+            if ( $@ ) {
+               print "/* error loading meta file */\n";
+               return 1;
+            } else {
+                if ( $metadata->{onDemand} ) {
+                    unless ( $metadata->{files} && ref( $metadata->{files} ) eq 'ARRAY' ) {
+                        print "/* nothing to load */\n";
+                        return 1;
                     }
+                    foreach ( @{$metadata->{files}} ) {
+                        next unless ( m/\.js$/ );
+                        if ( -e $path.$data->{path}.$_ ) {
+                            my $src = slurp( $path.$data->{path}.$_ );
+                            if ( $self->user->is_admin == 1 ) {
+                                print "/* $data->{path}$_ */\n";
+                                print $src;
+                            } else {
+                                print $self->js_compress($src);
+                            }
+                        } else {
+                            print "/* $data->{path}$_ not found */\n";
+                        }
+                    }
+                } else {
+                    print "/* onDemand disabled */\n";
+                    print "app.publish( '/desktop/notify', { html: 'onDemand disabled for this module', title:'Error' } );\n";
                 }
             }
         } else {
-            print "/* not a remote loaded module */\n";
+            print "/* not an onDemand module */\n";
+            print "app.publish( '/desktop/notify', { html: 'Not an onDemand module', title:'Error' } );\n";
         }
         return 1;
     }
@@ -335,13 +353,13 @@ sub call_plugin {
         warn "error in call to plugin $module :$@";
         return;
     }
-    return $ret ;
+    return $ret;
 }
 
 sub register_plugin {
     my ( $self, $plugin, $package ) = @_;
 
-    $package = "CometDesktop::Plugin::$package";
+    $package = 'CometDesktop::Plugin::'.$package;
     my $ret = eval { $self->plugins->{$plugin} = $package->new(); };
     if ( $@ ) {
         warn $@;
@@ -355,7 +373,7 @@ sub javascript_hash {
 
     my @t = $self->db->arrayHashQuery(qq|SELECT * FROM qo_files WHERE type='javascript' AND active='true' ORDER BY id|);
     return '' if ( $self->db->{error} );
-    my @u = $self->db->arrayHashQuery(qq|SELECT * FROM qo_dialogs WHERE type='javascript'|);
+    push( @t, $self->db->arrayHashQuery(qq|SELECT * FROM qo_dialogs WHERE type='javascript'|) );
     return '' if ( $self->db->{error} );
 
     $self->db->arrayHashQuery(qq|
@@ -367,20 +385,34 @@ sub javascript_hash {
             INNER JOIN qo_modules AS M ON M.id = GM.qo_modules_Id AND M.active='true'
             INNER JOIN qo_modules_has_files AS MF ON MF.qo_modules_id = M.id AND MF.type='javascript'
     WHERE
-        qo_groups_id=?
-    |,[$self->user->group_id],\@u);
+        GM.qo_groups_id=?
+    |,[$self->user->group_id],\@t);
     return '' if ( $self->db->{error} );
 
     my $path = $self->pwd;
 
-    push( @t, @u );
     my @existing;
     foreach my $h ( @t ) {
         $h->{stat} = [ ( stat( $path.$h->{path}.$h->{name} ) )[ 7, 9 ] ];
-        if ( -e _ ) {
-            push( @{$h->{stat}}, 1 );
-            push( @existing, $h );
+        next unless ( -e _ );
+
+        # TODO, move the onDemand flag to the database
+        if ( -e $path.$h->{path}.'plugin.meta' ) {
+            # check if the plugin has enabled onDemand
+            my $meta = slurp( $path.$h->{path}.'plugin.meta' );
+    
+            my $metadata = eval $meta;
+            if ( $@ ) {
+                warn "error loading meta file $path$h->{path}plugin.meta";
+                next;
+            } else {
+                next if ( $metadata->{onDemand} );
+                # ok, meta exists, but onDemand is off, so add it to the list
+            }
         }
+
+        push( @{$h->{stat}}, 1 );
+        push( @existing, $h );
     }
     my @lm = sort { $b->{stat}->[1] <=> $a->{stat}->[1] } @existing;
 
@@ -394,7 +426,7 @@ sub javascript_include {
     
     my @t = $self->db->arrayHashQuery(qq|SELECT * FROM qo_files WHERE type='javascript' AND active='true' ORDER BY id|);
     return '' if ( $self->db->{error} );
-    my @u = $self->db->arrayHashQuery(qq|SELECT * FROM qo_dialogs WHERE type='javascript'|);
+    push( @t, $self->db->arrayHashQuery(qq|SELECT * FROM qo_dialogs WHERE type='javascript'|) );
     return '' if ( $self->db->{error} );
 
     $self->db->arrayHashQuery(qq|
@@ -408,12 +440,11 @@ sub javascript_include {
             INNER JOIN qo_modules_has_files AS MF ON MF.qo_modules_id = M.id AND MF.type='javascript'
     WHERE
         qo_groups_id=?
-    |,[$self->user->group_id],\@u);
+    |,[$self->user->group_id],\@t);
     return '' if ( $self->db->{error} );
     
     my $path = $self->pwd;
 
-    push( @t, @u );
     foreach my $h ( @t ) {
         $h->{stat} = [ 0, 0 ];
         my $st = [ ( stat( $path.$h->{path}.$h->{name} ) )[ 7, 9 ] ];
@@ -427,6 +458,9 @@ sub javascript_include {
         $h->{meta} = ( -e $path.$h->{path}.'plugin.meta' ) ? 1 : 0;
     }
     my @lm = sort { $b->{stat}->[1] <=> $a->{stat}->[1] } @t;
+
+# XXX bench this, and determine if non buffered has any benefits
+# use trickle for example
 #    $|++;
     
     my $lastmod = $lm[0]->{stat}->[1];
@@ -445,15 +479,46 @@ sub javascript_include {
     print "Last-Modified: $lm\n";
     print "Content-Type: text/javascript\n\n";
     my $version = $self->version;
-    # decimal ip
-    print qq|/* Copyright (c) 2008 - David Davis <xantus\@xantus.org>
- * You DO NOT have permission to copy, redistribute, or relicense this software until it has been released under the GPL.
- *
- *
- * http://xant.us/
- * http://cometdesktop.com/
+    print qq|/*
+ * Comet Desktop
+ * Copyright (c) 2008 - David W Davis, All Rights Reserved
+ * xantus\@cometdesktop.com     http://xant.us/
  * http://code.google.com/p/cometdesktop/
+ * http://cometdesktop.com/
  *
+ * License: GPL v3
+ * http://code.google.com/p/cometdesktop/wiki/License
+ *
+ * Comet Desktop is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License
+ *
+ * Comet Desktop is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Comet Desktop.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Comet Desktop is a fork of qWikiOffice Desktop v0.7.1
+ *
+ * -----
+ *
+ * qWikiOffice Desktop v0.7.1
+ * Copyright(c) 2007-2008, Integrated Technologies, Inc.
+ * licensing\@qwikioffice.com
+ * http://www.qwikioffice.com/license.php
+ *
+ * -----
+ *
+ * Ext JS Library
+ * Copyright(c) 2006-2008, Ext JS, LLC.
+ * licensing\@extjs.com
+ *
+ * http://extjs.com/license
+ *
+ * -----
  * Comet Desktop v$version
  * Last Modified: $lm
  * 
@@ -461,24 +526,31 @@ sub javascript_include {
     my $module_meta = {};
     foreach my $h ( @t ) {
         if ( $h->{meta} ) {
-            if ( !exists( $module_meta->{$h->{moduleId}} ) ) {
-                print "/* $h->{moduleId} - remote loaded */\n";
+            if ( exists( $module_meta->{$h->{moduleId}} ) ) {
+                next if ( ref( $module_meta->{$h->{moduleId}} ) && $module_meta->{$h->{moduleId}}->{onDemand} );
+            } else {
                 $module_meta->{$h->{moduleId}} = slurp( $path.$h->{path}.'plugin.meta' );
                 
-                #my $metadata = eval { $self->decode_json( $module_meta->{$h->{moduleId}}.";" ); };
                 my $metadata = eval $module_meta->{$h->{moduleId}};
                 if ( $@ ) {
-                    print "/* error loading meta file */\n";
+                    print "/* error loading meta file for $h->{moduleId}, loading inline */\n";
                 } else {
-                    delete $metadata->{files};
-                    print "app.register(".$self->encode_json( $metadata ).");\n";
+                    $module_meta->{$h->{moduleId}} = $metadata;
+                    if ( $metadata->{onDemand} ) {
+                        delete $metadata->{files};
+                        print "/* $h->{moduleId} - onDemand */\n";
+                        print "app.register(".$self->encode_json( $metadata ).");\n";
+                        next;
+                    } else {
+                        # meta file exists, but onDemand is disabled
+                        print "/* onDemand disabled for $h->{moduleId}, loading inline */\n";
+                    }
                 }
             }
-            next;
         }
         if ( $h->{stat}->[2] ) {
             my $src =  slurp( $path.$h->{path}.$h->{name} );
-            if ( $self->user->group_id == 1 ) {
+            if ( $self->user->is_admin == 1 ) {
                 print "/* $h->{path}$h->{name} ($h->{stat}->[0] bytes) */\n";
                 print $src;
             } else {
@@ -486,14 +558,8 @@ sub javascript_include {
             }
         } else {
             print "/* $h->{path}$h->{name} not found */\n"
-                if ( $self->user->group_id == 1 );
+                if ( $self->user->is_admin == 1 );
         }
-#        if ( $h->{name} eq 'DesktopConfig.js' ) {
-#            my $modules = $self->get_modules();
-#            my $config = $self->get_config();
-#            $contents[-1] =~ s/<<modules>>/$modules/g;
-#            $contents[-1] =~ s/<<config>>/$config/g;
-#        }
     }
 
     return;
@@ -501,8 +567,6 @@ sub javascript_include {
 
 sub get_modules {
     my ( $self, $group_id ) = @_;
-
-    $group_id = $self->user->group_id unless ( defined $group_id );
     
     my @t;
     $self->db->arrayQuery(qq|
@@ -514,20 +578,14 @@ sub get_modules {
                 ON m.id=gm.qo_modules_id AND m.active='true'
     WHERE
         gm.qo_groups_id=?
-    |,[ $group_id ],\@t);
+    |,[ $group_id || $self->user->group_id ],\@t);
     return '' if ( $self->db->{error} );
 
-    # XXX temp
-    # move network status to the top
+    # XXX hack
+    # move registry to the top
     @t = sort { $b =~ m/Registry/ } @t;
 
     return \@t;
-
-#    my @contents;
-#    foreach ( @t ) {
-#        push( @contents, 'new '.$_.'()' );
-#    }
-#    return join( ",\n", @contents );
 }
 
 sub get_config {
@@ -592,7 +650,6 @@ sub get_config {
     $self->_merge( $styles, $group );
     $self->_merge( $styles, $member );
     my $user = $self->user;
-#    $launchers->{autorun} = ['jabber'] if ( $self->user->is_guest );
 #    require Socket;
     return {
         launchers => $launchers,
@@ -615,7 +672,7 @@ sub get_config {
         sessionId => $user->session_id,
         localmode => $self->localmode,
         version => $self->version,
-#        env => ( $self->user->group_id == 1 ? \%ENV : {} ),
+#        env => ( $self->user->is_admin == 1 ? \%ENV : {} ),
     };
 }
 
@@ -956,7 +1013,8 @@ sub plain_throw {
     my $self = shift;
     print "Status: 500\n";
     print "Content-Type: text/plain\n\n";
-    print "Error: $self->{error}";
+    print 'Error: '.$self->{error};
+    die $self->{error};
 }
 
 1;
