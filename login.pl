@@ -58,38 +58,46 @@ if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
     my $http = ( $ENV{HTTPS} && $ENV{HTTPS} eq 'on' ) ? 'https' : 'http';
 
     local $/;
-    my $data = <DATA>;
+    my $out = <DATA>;
     my $ga = qq|
 <script type="text/javascript">
     var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
     document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
 </script>
 <script type="text/javascript">
-    var pageTracker = _gat._getTracker("UA-248266-13");
+    var pageTracker = _gat._getTracker("\$ga_id");
     pageTracker._trackPageview();
 </script>
 |;
     $ga = '<!-- disabled for localhost -->' if ( $ENV{REMOTE_ADDR} eq '127.0.0.1' );
     $ga = '<!-- disabled for local mode -->' if ( $desktop->localmode );
-    $data =~ s/\$token/$token/eg;
-    $data =~ s/\$ga/$ga/eg;
-    $data =~ s/\$v/$v/eg;
-    $data =~ s/\$http/$http/eg;
+    if ( my $act = $desktop->ga_account ) {
+        $ga =~ s/\$ga_id/$act/g;
+    } else {
+        $ga = '<!-- disabled, set ga_account in your config to enable -->';
+    }
+    $out =~ s/\$token/$token/eg;
+    $out =~ s/\$ga/$ga/eg;
+    $out =~ s/\$v/$v/eg;
+    $out =~ s/\$http/$http/eg;
     print "Content-Type: text/html\n\n";
-    print $data;
+    utf8::encode($out);
+    print $out;
 }
 
 1;
 
+    
+# TODO proper doctype
 __DATA__
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
+<html lang="en">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-<title>Comet Desktop - Login</title>
-<meta http-equiv="generator" content="Sprocket" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>\x{2604} Comet Desktop - Login</title>
+<meta http-equiv="generator" content="Comet Desktop" />
 <meta http-equiv="imagetoolbar" content="no" />
-<meta name="keywords" content="comet, desktop, web desktop, webos, web os, webtop, perl, javascript, sprocket, comet, cometd, dojo, extjs, ext, ajax, xantus, mtfnpy, david davis" />
+<meta name="keywords" content="comet, desktop, web desktop, webos, web os, webtop, perl, javascript, sprocket, extjs, ext js, ajax, web socket, xantus" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 
 <!-- Extjs -->
