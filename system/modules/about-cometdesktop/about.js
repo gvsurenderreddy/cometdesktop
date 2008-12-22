@@ -73,12 +73,12 @@ QoDesk.AboutCometDesktop = Ext.extend(Ext.app.Module, {
                     {
                         title: 'About',
                         autoLoad: {url: 'system/modules/about-cometdesktop/html/about.html?v='+desktopConfig.version}
-                    }
-                    ,{
+                    },
+                    {
                         title: 'Credits',
                         autoLoad: {url: 'system/modules/about-cometdesktop/html/credits.html?v='+desktopConfig.version}
-                    }
-                    ,{
+                    },
+                    {
                         title: 'License',
                         autoLoad: {url: 'system/modules/about-cometdesktop/html/license.html?v='+desktopConfig.version}
                     }
