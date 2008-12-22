@@ -30,14 +30,23 @@
  *
  * http://extjs.com/license
  *
+ * -----
+ *
+ * FAVideo
+ * Copyright (c) 2007. Adobe Systems Incorporated.
+ * All rights reserved.
+ * License: BSD
+ *
+ * http://www.adobe.com/go/favideo/
+ *
  */
 
 QoDesk.VideoPlayer = Ext.extend(Ext.app.Module, {
 
-	moduleType: 'app',
-	moduleId: 'videoplayer',
-	
-	init: function() {
+    moduleType: 'app',
+    moduleId: 'videoplayer',
+    
+    init: function() {
         this.launcher = {
             handler: this.createWindow,
             iconCls: 'videoplayer-icon',
@@ -57,63 +66,80 @@ QoDesk.VideoPlayer = Ext.extend(Ext.app.Module, {
                 id: 'video-win',
                 title: 'Video Player',
                 html: '<div id="player-'+ this.playerId +'" style="background-color:#000"></div>',
+                width: 400,
+                height: 300,
                 iconCls: 'videoplayer-icon',
                 shim: false,
                 animCollapse: false,
                 constrainHeader: true
             });
             this.player = new FAVideo( 'player-' + this.playerId );
-            this.addListeners();
-		    this.player.setSize( win.getInnerWidth(), win.getInnerHeight() );
+            this.setupEvents();
+            this.player.setSize( win.getInnerWidth(), win.getInnerHeight() );
+
+            var sound = Ext.state.Manager.get( 'volume-settings', { volume: 60 } );
+
             this.player.setOptions({
                 skinAutoHide: true,
                 clickToTogglePlay: true,
                 autoLoad: true,
                 autoPlay: false,
-                playheadUpdateInterval: 500
+                playheadUpdateInterval: 500,
+                volume: sound.volume
             });
-			this.player.load( 'diablo3-gameplay-en-US.flv' );
-//            log('create');
+            this.player.setVolume( sound.volume );
+            this.player.load( 'demo_video.flv' );
+            this.win.on( 'close', this.removeEvents, this );
+            this.subscribe( '/desktop/sound/volume', this.desktopVolumeChanged, this );
         }
 
-//        log('show');
         win.show();
     },
 
-	
-    addListeners: function() {
+    desktopVolumeChanged: function(e) {
+        this.player.setVolume( e.muted === true ? 0 : e.volume );
+    },
+
+    setupEvents: function() {
         this.win.on( 'resize', function( w ) {
-		    this.player.setSize( w.getInnerWidth(), w.getInnerHeight() );
+            this.player.setSize( w.getInnerWidth(), w.getInnerHeight() );
         }, this );
 
-		this.player.addEventListener("init", this, this.playerInit );
-		this.player.addEventListener("progress", this, this.logEvent );
-		this.player.addEventListener("playheadUpdate", this, this.playerHeadUpdate );
-		this.player.addEventListener("stateChange", this, this.logEvent );
-		this.player.addEventListener("change", this, this.logEvent );
-		this.player.addEventListener("complete", this, this.logEvent );
-		this.player.addEventListener("ready", this, this.logEvent );
-		this.player.addEventListener("metaData", this, this.logEvent );
-		this.player.addEventListener("cuePoint", this, this.logEvent );
-	},
-	
-	removeListeners: function() {
-		this.player.removeEventListener("init", this, this.logEvent );
-		this.player.removeEventListener("progress", this, this.logEvent );
-		this.player.removeEventListener("playheadUpdate", this, this.logEvent );
-		this.player.removeEventListener("stateChange", this, this.logEvent );
-		this.player.removeEventListener("change", this, this.logEvent );
-		this.player.removeEventListener("complete", this, this.logEvent );
-		this.player.removeEventListener("ready", this, this.logEvent );
-		this.player.removeEventListener("metaData", this, this.logEvent );
-		this.player.removeEventListener("cuePoint", this, this.logEvent );
-	},
+        this.player.addEventListener("init", this, this.playerInit );
+        this.player.addEventListener("progress", this, this.logEvent );
+        this.player.addEventListener("playheadUpdate", this, this.playerHeadUpdate );
+        this.player.addEventListener("stateChange", this, this.playerStateChange );
+        // change - volume
+        this.player.addEventListener("change", this, this.playerChange.createDelegate( this ) );
+        this.player.addEventListener("complete", this, this.logEvent );
+        this.player.addEventListener("ready", this, this.logEvent );
+        this.player.addEventListener("metaData", this, this.logEvent );
+        this.player.addEventListener("cuePoint", this, this.logEvent );
+    },
+    
+    removeEvents: function() {
+        if ( !this.player )
+            return;
+        this.player.removeEventListener("init", this, this.logEvent );
+        this.player.removeEventListener("progress", this, this.logEvent );
+        this.player.removeEventListener("playheadUpdate", this, this.logEvent );
+        this.player.removeEventListener("stateChange", this, this.playerStateChange );
+        this.player.removeEventListener("change", this, this.playerChange );
+        this.player.removeEventListener("complete", this, this.logEvent );
+        this.player.removeEventListener("ready", this, this.logEvent );
+        this.player.removeEventListener("metaData", this, this.logEvent );
+        this.player.removeEventListener("cuePoint", this, this.logEvent );
+    },
 
+    playerChange: function(e) {
+//        log(e);
+        if ( e.hasOwnProperty( 'volume' ) )
+            this.publish( '/desktop/sound/volume', { volume: e.volume } );
+    },
 
     playerHeadUpdate: function( e ) {
 //        log( e );
     },
-
 
     playerInit: function( e ) {
 //        log('init',e);
@@ -121,9 +147,12 @@ QoDesk.VideoPlayer = Ext.extend(Ext.app.Module, {
 //            log('pos:'+this.pos);
     },
 
+    playerStatechange: function( e ) {
+        log( 'video player state change:'+e.state );
+    },
 
     logEvent: function( e ) {
-//        log( 'event', e );        
+//        log( e );
     }
 
 });
@@ -621,7 +650,7 @@ http://www.adobe.com/go/favideo/
 		var hasProductInstall = DetectFlashVer(6, 0, 65);
 		var hasRequestedVersion = DetectFlashVer(this.requiredMajorVersion, this.requiredMinorVersion, this.requiredRevision);		
 		if (hasProductInstall && !hasRequestedVersion ) {
-			var MMPlayerType = (isIE == true) ? "ActiveX" : "PlugIn";
+			var MMPlayerType = ( Ext.isIE == true) ? "ActiveX" : "PlugIn";
 			var MMredirectURL = window.location;
 			document.title = document.title.slice(0, 47) + " - Flash Player Installation";
 			var MMdoctitle = document.title;
@@ -753,7 +782,7 @@ http://www.adobe.com/go/favideo/
  *----------------------------------------------------- */
 	FAVideo.prototype.AC_Generateobj = function(objAttrs, params, embedAttrs) { 
 		var str = '';
-		if (isIE && isWin && !isOpera) {
+		if ( Ext.isIE && Ext.isWindows && !Ext.isOpera) {
 			str += '<object ';
 			for (var i in objAttrs) {
                 if ( objAttrs.hasOwnProperty( i ) )
@@ -828,9 +857,8 @@ http://www.adobe.com/go/favideo/
 // Flash Player Version Detection
 // Detect Client Browser type
 // Copyright 2005-2007 Adobe Systems Incorporated.  All rights reserved.
-var isIE  = (navigator.appVersion.indexOf("MSIE") != -1) ? true : false;
-var isWin = (navigator.appVersion.toLowerCase().indexOf("win") != -1) ? true : false;
-var isOpera = (navigator.userAgent.indexOf("Opera") != -1) ? true : false;
+//
+// DWD - Generic functions removed, in favor of Ext's
 
 function ControlVersion()
 {
@@ -938,7 +966,7 @@ function GetSwfVer(){
 	else if (navigator.userAgent.toLowerCase().indexOf("webtv/2.5") != -1) flashVer = 3;
 	// older WebTV supports Flash 2
 	else if (navigator.userAgent.toLowerCase().indexOf("webtv") != -1) flashVer = 2;
-	else if ( isIE && isWin && !isOpera ) {
+	else if ( Ext.isIE && Ext.isWindows && !Ext.isOpera ) {
 		flashVer = ControlVersion();
 	}	
 	return flashVer;
@@ -951,7 +979,7 @@ function DetectFlashVer(reqMajorVer, reqMinorVer, reqRevision)
 	if (versionStr == -1 ) {
 		return false;
 	} else if (versionStr != 0) {
-		if(isIE && isWin && !isOpera) {
+		if(Ext.isIE && Ext.isWindows && !Ext.isOpera) {
 			// Given "WIN 2,0,0,11"
 			tempArray         = versionStr.split(" "); 	// ["WIN", "2,0,0,11"]
 			tempString        = tempArray[1];			// "2,0,0,11"
@@ -989,7 +1017,7 @@ function AC_AddExtension(src, ext)
 function AC_Generateobj(objAttrs, params, embedAttrs) 
 { 
   var str = '';
-  if (isIE && isWin && !isOpera)
+  if (Ext.isIE && Ext.isWindows && !Ext.isOpera)
   {
     str += '<object ';
     for (var i in objAttrs)
