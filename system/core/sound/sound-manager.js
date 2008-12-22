@@ -33,7 +33,8 @@
  * License: BSD
  * http://www.schillmania.com/projects/soundmanager2/doc/resources/#licensing
  * 
- * Used with permission.  Thanks Scott
+ * Thanks Scott!
+ *
  * -----
  *
  * Ext JS Library
@@ -72,6 +73,7 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
         app.onReady(this.onReady,this);
         this.settings = Ext.state.Manager.get( 'volume-settings', this.settings );
         this.subscribe( '/desktop/sound/play', this.playSoundEvent, this );
+        this.subscribe( '/desktop/sound/volume', this.setVolumeEvent, this );
     },
 
     createWindow: function() {
@@ -88,6 +90,23 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
             //s.setPosition(app.desktop.getViewWidth()-s.getSize().width,app.desktop.getViewHeight()-s.getSize().height);
             var x = app.desktop.getViewWidth() - this.size.width;
             var y = app.desktop.getViewHeight() - this.size.height;
+            this.slider = new Ext.Slider({
+                height: 150,
+                vertical: true,
+                minValue: 0,
+                maxValue: 100,
+                value: this.settings.volume,
+                listeners: {
+                    change: {
+                        fn: this.setVolume,
+                        scope: this
+                    },
+                    dragend: {
+                        fn: this.saveVolume,
+                        scope: this
+                    }
+                }
+            });
             win = app.desktop.createWindow({
                 title: 'Volume',
                 id: 'sound-manager-win',
@@ -111,39 +130,25 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
                         region: 'center',
                         bodyStyle: 'padding:10px;padding-left:45px',
                         items: [
-                            new Ext.Slider({
-                                height: 150,
-                                vertical: true,
-                                minValue: 0,
-                                maxValue: 100,
-                                value: this.settings.volume,
-                                listeners: {
-                                    change: {
-                                        fn: this.setVolume,
-                                        scope: this
-                                    },
-                                    dragend: {
-                                        fn: this.saveVolume,
-                                        scope: this
-                                    }
-                                }
-                            }),
+                            this.slider,
                             new Ext.form.Checkbox({
                                 name: 'mute-volume',
-                                hideLabel:true,
+                                hideLabel: true,
                                 boxLabel:'Mute',
                                 checked: this.settings.muted,
-                                handler: this.setMute,
+                                handler: this.muteClicked,
                                 scope: this
                             })
                         ]
                     }
                 ]
             });
+            // keep the volume control in the bottom right on resize
 	        Ext.EventManager.onWindowResize(function() {
                 var w = app.desktop.getWindow('sound-manager-win');
-                w.setPosition(d.getViewWidth()-this.size.width,d.getViewHeight()-this.size.height);
+                w.setPosition(app.desktop.getViewWidth()-this.size.width,app.desktop.getViewHeight()-this.size.height);
             }, this, {delay:200});
+
             if ( this.disabled )
                 win.body.mask();
         }
@@ -151,6 +156,13 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
     },
     
     onReady: function() {
+        // XXX adjust this if sm2 fails to load
+        // TODO add an init retry to sm2
+        this.loadManager.defer( 1000, this );
+    },
+
+    loadManager: function() {
+        log('loading sound manager 2');
         this.soundManager = window.soundManager = new SoundManager('system/core/sound/');
         this.soundManager.defaultOptions.volume = this.settings.volume;
         this.soundManager.onerror = this.onError.createDelegate( this );
@@ -159,6 +171,7 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
     },
 
     onLoad: function() {
+        this.publish( '/desktop/sound/manager/loaded', this.settings );
         if ( this.settings.muted )
             this.trayButton.setIconClass('sound-manager-mute-icon');
         else
@@ -172,6 +185,7 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
     },
 
     onError: function() {
+        this.publish( '/desktop/sound/manager/error', { message: 'Sound Manager 2 failed to load' } );
         log('flash sound manager failed to load');
         this.trayButton.setIconClass('sound-manager-error-icon');
         this.disabled = true;
@@ -180,6 +194,57 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
             win.body.mask();
     },
 
+    playSoundEvent: function( obj ) {
+        // fired from /desktop/sound/play
+        this.playSound( obj.file );
+    },
+
+    playSound: function(url) {
+        this.publish( '/desktop/sound/startplay', { url: url, volume: this.settings.volume, muted: this.settings.muted } );
+        if ( this.disabled )
+            return;
+        if ( !this.soundManager )
+            return log('sound manager not found');
+        //if ( this.settings.muted )
+        //    return;
+        this.currentId = Ext.id(null,'sound');
+        var data = [];
+        var opts = {
+            id: this.currentId,
+            url: url,
+            volume: this.settings.volume,
+            autoPlay: true,
+            onload: this.soundLoaded.createDelegate( this, data, 0 ),
+            onid3: this.soundInfo.createDelegate( this, data, 0 )
+        };
+        data.push( this.soundManager.createSound( opts ) );
+        //sound.onfinish = this.soundFinished.createDelegate( this );
+        // onload, onplay, onpause, onresume, onstop, onjustbeforefinish,
+        // onbeforefinishcomplete, onbeforefinish, onid3,
+        // whileloading, whileplaying
+    },
+
+    soundInfo: function(o) {
+        this.publish( '/desktop/sound/meta', o );
+//        log('id3:'+Ext.encode(o.id3));
+        /* XXX example code for an mp3 player, subscribe to /desktop/sound/meta and use /desktop/notify
+        var song = sound.id3.songname;
+        if ( o.id3.artist )
+            song = o.id3.artist + ( song ? ' - ' + song : '' );
+        if ( song && song != '' )
+            this.publish('/desktop/notify',{ html: song, title: 'Now Playing', iconCls: 'sound-manager-icon' });
+        */
+    },
+
+    soundLoaded: function(o) {
+        this.publish( '/desktop/sound/loaded', o );
+        if ( this.settings.muted )
+            this.soundManager.mute( this.currentId );
+        else
+            this.soundManager.unmute( this.currentId );
+    },
+    
+    
     mute: function(mute) {
         if ( mute ) {
             this.settings.muted = true;
@@ -195,65 +260,35 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
         this.saveSettings();
     },
 
-    playSoundEvent: function( obj ) {
-        this.playSound( obj.file, obj.announce ? true : false );
-    },
 
-    playSound: function(url,announce) {
-        if ( this.disabled )
-            return;
-        if ( !this.soundManager )
-            return log('sound manager not found');
-        //if ( this.settings.muted )
-        //    return;
-        this.currentId = Ext.id(null,'sound');
-        var data = [];
-        var opts = {
-            id: this.currentId,
-            url: url,
-            volume: this.settings.volume,
-            autoPlay: true,
-            onload: this.soundLoaded.createDelegate( this, data, 0 )
-        };
-        if ( announce )
-            opts.onid3 = this.soundInfo.createDelegate( this, data, 0 );
-
-        data.push( this.soundManager.createSound( opts ) );
-        //sound.onfinish = this.soundFinished.createDelegate( this );
-        // onload, onplay, onpause, onresume, onstop, onjustbeforefinish,
-        // onbeforefinishcomplete, onbeforefinish, onid3,
-        // whileloading, whileplaying
+    muteClicked: function(o,mute) {
+        this.publish( '/desktop/sound/volume', { muted: mute } );
     },
-
-    soundInfo: function(sound) {
-        log('id3:'+Ext.encode(sound.id3));
-        var song = sound.id3.songname;
-        if ( sound.id3.artist )
-            song = sound.id3.artist + ( song ? ' - ' + song : '' );
-        if ( song && song != '' )
-            this.publish('/desktop/notify',{ html: song, title: 'Now Playing', iconCls: 'sound-manager-icon' });
-    },
-
-    soundLoaded: function() {
-        if ( this.settings.muted )
-            this.soundManager.mute( this.currentId );
-        else
-            this.soundManager.unmute( this.currentId );
-    },
-
-    setMute: function(o,mute) {
-        this.mute(mute);
-    },
-    
     
     setVolume: function(o,vol) {
-        if ( this.currentId )
-            this.soundManager.setVolume( this.currentId, vol );
-        this.settings.volume = vol;
+        // fired by moving the slider
+        if ( this.timer )
+            window.clearTimeout( this.timer );
+        this.timer = this.publish.defer( 75, this, [ '/desktop/sound/volume', { volume: vol } ] );
+    },
+
+    setVolumeEvent: function(e) {
+        // fired by /desktop/sound/volume
+        if ( e.hasOwnProperty( 'volume' ) ) {
+            this.settings.volume = e.volume;
+            if ( this.currentId )
+                this.soundManager.setVolume( this.currentId, e.volume );
+            if ( this.slider )
+                this.slider.setValue( e.volume );
+        }
+        if ( e.hasOwnProperty( 'muted' ) )
+           this.mute( e.muted );
     },
 
     saveVolume: function() {
-        this.playSound('resources/sounds/click-low.mp3');
+        // fired when the slider is done dragging
+        // XXX keep this?
+//        this.playSound('resources/sounds/click-low.mp3');
         this.saveSettings();
     },
     

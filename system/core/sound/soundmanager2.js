@@ -7,6 +7,8 @@
    Code licensed under the BSD License:
    http://schillmania.com/projects/soundmanager2/license.txt
 
+   Modified for Extjs by David Davis
+
    V2.90a.20081028
 */
 
@@ -1229,6 +1231,7 @@ function SoundManager(smURL,smID) {
   }; // SMSound()
 
   // register a few event handlers
+  /*
   if (window.addEventListener) {
     window.addEventListener('focus',_s.handleFocus,false);
     window.addEventListener('load',_s.beginDelayedInit,false);
@@ -1242,9 +1245,15 @@ function SoundManager(smURL,smID) {
     // no add/attachevent support - safe to assume no JS -> Flash either.
     soundManager.onerror();
     soundManager.disable();
-  };
-
+  }
   if (document.addEventListener) document.addEventListener('DOMContentLoaded',_s.domContentLoaded,false);
+  */
+
+  if (_s._tryInitOnFocus)
+      Ext.EventManager.on( window, 'mousemove', _s.handleFocus, _s); // massive Safari focus hack
+  Ext.EventManager.on( window, 'focus', _s.handleFocus, _s );
+  Ext.EventManager.on( window, 'unload', _s.destruct, _s );
+  Ext.onReady( _s.beginDelayedInit, _s );
 
 }; // SoundManager()
 
