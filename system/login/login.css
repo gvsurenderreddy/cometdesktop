@@ -16,6 +16,10 @@ body {
 	background:#f9f9f9 none;
     text-align: center;
 /*	background:#f9f9f9 url(logo.jpg) no-repeat center center; */
+    font-size: 13px;
+}
+#login-logo h1 {
+    font-size: 250%;
 }
 #login-form .x-plain-body {
 	background:#f9f9f9 none;

@@ -84,16 +84,15 @@ Login = function(){
             }
     	    ]);
 
+            // TODO, replace this with renterTo or something
 			var logoPanel = new Ext.Panel({
 //				baseCls: 'x-plain',
 				id: 'login-logo',
                 border: false,
-                html: '<center><h2>Comet Desktop</h2>\
+                html: '<center><h1>Comet Desktop</h1>\
                     <br/>\
-                    <div style="text-align:left;">\
-                    The <a href="http://code.google.com/p/cometdesktop/" target="_blank">Comet Desktop Project</a><br/>\
+                    <a href="http://code.google.com/p/cometdesktop/" target="_blank">Project Website</a><br/>\
                     <br/>\
-                    </div>\
                     </center>\
                     ',
 		        region: 'center'
