@@ -209,7 +209,7 @@ QoDesk.AdminModules = Ext.extend(Ext.app.Module, {
             
             
             var rightDrawer = new drawer({
-                size      : 300,
+                size      : 320,
                 side      : 'e', // Can be n e s w (North, East, South, West)
                 //animate   : true,
                 resizable: true,
