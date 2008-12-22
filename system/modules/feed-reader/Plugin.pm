@@ -69,6 +69,9 @@ sub cmd_fetch {
 	$xml =~ s/<\/dc:creator>/<\/author>/g;
 	$xml =~ s/<dc:creator/<author/g;
 
+#    utf8::encode($xml) if ( $xml =~ m/utf-8/ );
+    utf8::encode($xml);
+
     print $xml;
     return 1;
 }
