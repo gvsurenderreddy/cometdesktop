@@ -47,9 +47,7 @@ QoDesk.DB = Ext.extend(Ext.app.Module, {
 			text: 'DB',
 			tooltip: ''
 		}
-    },
-
-    createWindow: Ext.emptyFn
+    }
 
 });
 
