@@ -12,7 +12,8 @@ print "Cache-Control: no-cache\n";
 print "Expires: 0\n";
 
 my $out;
-$desktop->localmode( 1 ) if ( $ENV{LOCAL_MODE} );
+
+# TODO use templates for all of this
 
 my $v = $desktop->version;
 my $ga = qq|
@@ -24,7 +25,7 @@ document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.
 <script type="text/javascript">
     var pageTracker;
     if ( window._gat ) {
-        pageTracker = _gat._getTracker("UA-248266-13");
+        pageTracker = _gat._getTracker("\$ga_id");
         pageTracker._trackPageview();
     }
 </script>
@@ -32,18 +33,24 @@ document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.
 
 $ga = '<!-- disabled for localhost -->' if ( $ENV{REMOTE_ADDR} && $ENV{REMOTE_ADDR} eq '127.0.0.1' );
 $ga = '<!-- disabled for local mode -->' if ( $desktop->localmode );
+if ( my $act = $desktop->ga_account ) {
+    $ga =~ s/\$ga_id/$act/g;
+} else {
+    $ga = '<!-- disabled, set ga_account in your config to enable -->';
+}
 
 unless( $desktop->user->logged_in ) {
 #    print "Location: login.pl\n\n";
     print "Content-Type: text/html\n\n";
-
+    # TODO proper doctype
+    # XXX is the shortcut icon the correct size or can it be larger?
 $out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<title>\x{2604} Comet Desktop - Web Desktop - JavaScript Desktop - Extjs - Comet [ v$v ]</title>
-<meta http-equiv="generator" content="Sprocket" />
-<meta name="keywords" content="comet, desktop, web desktop, webos, web os, webtop, javascript desktop, perl, javascript, sprocket, comet, cometd, dojo, extjs, ext, ajax, xantus, mtfnpy, david davis, sprocket, sprocket.socket, websocket, web socket, sprocket.gateway, javscript socket, poe, sprocketframework" />
+<title>\x{2604} Comet Desktop - Web Desktop - JavaScript Desktop - Extjs WebOS [ v$v ]</title>
+<meta http-equiv="generator" content="Comet Desktop" />
+<meta name="keywords" content="comet, desktop, web desktop, webos, web os, webtop, perl, javascript, sprocket, extjs, ext js, ajax, web socket, xantus" />
 <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 <style type="text/css">
@@ -60,13 +67,13 @@ $out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/T
     <div id="message"></div>
     <noscript>
         <h2>JavaScript Required</h2>
-        Please enable JavaScript, and refresh this page.  You're really missing out!
+        Please enable JavaScript, and refresh this page.
     </noscript>
     $ga    
     <script type="text/javascript">
         var msg = document.getElementById('message');
         if ( msg )
-            msg.innerHTML = '<strong>Please wait while you are redirected</login>';
+            msg.innerHTML = '<strong>Please wait while you are redirected</strong>';
         window.onload = function() { window.location.href = 'login.pl'; };
     </script>
 </body>
@@ -103,15 +110,15 @@ $out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/T
 <html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<title>\x{2604} Comet Desktop - David Davis - Xantus [ v$v ]</title>
-<meta http-equiv="generator" content="Sprocket" />
+<title>\x{2604} Comet Desktop - [ v$v ]</title>
+<meta http-equiv="generator" content="Comet Desktop" />
 <meta http-equiv="imagetoolbar" content="no" />
-<meta name="keywords" content="comet, desktop, web desktop, webos, web os, webtop, perl, javascript, sprocket, comet, cometd, dojo, extjs, ext, ajax, xantus, mtfnpy, david davis" />
+<meta name="keywords" content="comet, desktop, web desktop, webos, web os, webtop, perl, javascript, sprocket, extjs, ext js, ajax, web socket, xantus" />
 <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 
 <style type="text/css">
-#loading-mask{
+#x-loading-mask{
     position: absolute;
     left: 0;
     top: 0;
@@ -120,7 +127,7 @@ $out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/T
     z-index: 20000;
     background-color: #000;
 }
-#loading{
+#x-loading{
     position: absolute;
     left: 45%;
     top: 40%;
@@ -128,9 +135,9 @@ $out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/T
     z-index: 20001;
     height: auto;
 }
-#loading .loading-indicator{
+#x-loading .x-loading-indicator{
     background: #000;
-    background-image:url(lib/Ext/resources/images/default/grid/loading.gif);
+    background-image:url(lib/ext-2.2/resources/images/default/grid/loading.gif);
     background-repeat: no-repeat;
     background-position:bottom center;
     color: #fff;
@@ -152,9 +159,9 @@ $css
 
 <body scroll="no">
 <div id="x-desktop">
-<div id="loading-mask"></div>
-<div id="loading">
-    <div class="loading-indicator"> Loading....</div>
+<div id="x-loading-mask"></div>
+<div id="x-loading">
+    <div class="x-loading-indicator"> Loading....</div>
 </div>
 </div>
 
@@ -174,13 +181,14 @@ $debug
 <!-- JS -->
 <script type="text/javascript">
     if ( window.console ) {
-        window.log = function(m) { window.console.log(m); };
+        window.log = function() { window.console.log( arguments.length > 1 ? arguments : arguments[0] ); };
     } else if ( Ext.log ) {
         window.log = window.Ext.log;
     } else {
         window.log = Ext.emptyFn;
     }
     var desktopConfig = $config;
+    desktopConfig.initTime = new Date();
 </script>
 <script type="text/javascript" src="javascript.pl?v=$v&amp;h=$hash"></script>
 $ga
