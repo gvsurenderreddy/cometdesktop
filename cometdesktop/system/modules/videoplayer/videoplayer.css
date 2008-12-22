@@ -1,0 +1,10 @@
+.videoplayer-shortcut img {
+    background-image: url(images/videoplayer48x48.png);
+    filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='system/modules/videoplayer/images/videoplayer48x48.png', sizingMethod='scale');
+}
+.videoplayer-icon {
+    background-image: url(images/videoplayer16x16.png)  !important;
+    background-color:transparent;
+    background-position:center center;
+    background-repeat:no-repeat;
+}

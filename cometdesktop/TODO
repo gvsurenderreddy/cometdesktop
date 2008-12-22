@@ -1,0 +1,62 @@
+
+Comet Desktop - TODO
+
+- *
+    include uncommon cpan modules with dist
+    add a web or script based setup and install
+    modularize the login that allows for configurable authentication
+      (pubsub could be useful here)
+    add a sqllite database admin module
+    database versioning, and upgrade system
+    add onunload confirmation
+    document events on the wiki
+    add a cookbook to the wiki
+    add $desktop->tmp that points to a tmp dir
+      with conf var
+
+- system/login/*
+    improve the look of the login page
+    add missing extjs lib detection
+
+- system/modules/admin-modules/ux/drawer.js
+    this module extends Ext.Window.DD, investigate if it affects DnD
+- system/modules/admin-modules/*
+    add support to modify module file lists
+    add remote load configuration, drop direct usage of plugin.meta
+    ..but keep plugin.meta for future use
+
+- index.pl, login.pl, etc
+    add a simple template system for html
+    possibly remove all of these files and use a single handler
+
+- *.js
+    add more pubsub event usage across the board
+
+- *.pm, *.pl
+    improve error handling by using the Exception class
+
+- system/core/sound/*
+    sometimes the sound system fails to load (flash), fix this
+    the sound icon for the muted and unmuted state isn't different enough
+    borderless volume control
+
+- system/core/NetworkStatus.js
+    change the red/green ball to an icon that represents network activity
+    add a system for multiple connection tracking with pubsub (bosh, ajax, sprocket, comet, etc)
+    add a svg/canvas rrd type graph, with live tracking
+
+- system/modules/qo-preferences/*
+    add a slider for transparency
+    add a config options for window edge snapping
+      (this could be a good candidate for pluggable config options, aspect based perhaps?)
+
+- system/core/App.js
+    move utils and sprocket specific things out of this file
+    phase out desktopConfig, in favor of app.config
+
+- system/core/*
+    notify widget should use a bubble or borderless window
+
+- system/modules/videoplayer/*
+    change the demo video
+

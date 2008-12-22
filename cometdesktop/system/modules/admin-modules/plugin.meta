@@ -1,0 +1,18 @@
+{
+    onDemand => 1,
+    license => 'GPLv3',
+    author => 'David W Davis, http://xant.us/',
+    moduleId => 'admin-modules',
+    moduleType => 'system',
+    pkg => 'QoDesk.AdminModules',
+    iconCls => 'admin-modules-icon',
+    shortcutIconCls => 'admin-modules-shortcut',
+    text => 'Module Admin',
+    tooltip => '<b>Module Admin</b><br />Configure the desktop modules',
+    files => [
+        'admin-modules.css',
+        'ux/dataview.js',
+        'ux/drawer.js',
+        'admin-modules.js'
+    ]
+}

@@ -1,0 +1,17 @@
+{
+    onDemand => 1,
+    license => 'GPLv3',
+    author => 'Jack Slocum, Extjs; David W Davis, http://xant.us/',
+    moduleId => 'todo-list',
+    moduleType => 'app',
+    pkg => 'QoDesk.ToDoList',
+    iconCls => 'todo-list-icon',
+    shortcutIconCls => 'todo-list-shortcut',
+	text => 'ToDo List',
+	tooltip => '<b>ToDo List</b>',
+    files => [
+        'tasks.css',
+        'classes.js',
+        'tasks.js'
+    ]
+}

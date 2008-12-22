@@ -1,0 +1,5 @@
+Options -Indexes 
+
+<Filesmatch "\.js$">
+    Allow from All
+</Filesmatch>

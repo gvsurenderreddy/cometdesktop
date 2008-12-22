@@ -1,0 +1,34 @@
+
+Comet Desktop - INSTALL
+http://code.google.com/p/cometdesktop/
+
+
+Quick and dirty install
+
+(svn checkouts already link my svn external, so you can skip this step if you checked from svn)
+download extjs v2.2 from http://extjs.com/
+unzip/untar it as lib/ext-2.2 so that the adaptor directory is at lib/ext-2.2/adaptor/
+
+edit .htaccess
+set the COMETDESKTOP_ROOT to the root dir of the cometdesktop installation
+
+import the database
+$ echo 'create database cometdesktop' | mysql -u root mysql
+$ mysql -u root cometdesktop < conf/install.sql
+
+the default admin login is admin/admin
+
+change the admin password
+$ perl -MDigest::SHA1 -e 'print "Password:";my $p=<STDIN>;chomp($p);print Digest::SHA1::sha1_hex($p)."\n";'
+# enter a new password, and copy the hash it printed out
+
+# replace hash with the hash you just copied in this line, and run it
+$ echo 'update qo_members set password="hash" where id=4' | mysql -u root cometdesktop
+
+edit conf/desktop.conf to suit
+
+main.conf just loads conf/desktop.conf, you can move
+the conf dir out of your document root and change the path in main.conf
+if you like
+
+

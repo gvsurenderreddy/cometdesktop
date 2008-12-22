@@ -1,0 +1,7 @@
+lib/ext-2.2/*
+conf/repo.conf
+tools/*
+*/.svn/*
+*.zip
+*/externals.txt
+externals.txt

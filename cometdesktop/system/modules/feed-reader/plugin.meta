@@ -1,0 +1,21 @@
+{
+    onDemand => 1,
+    license => 'GPLv3',
+    author => 'Jack Slocum, Extjs; David W Davis, http://xant.us/',
+    moduleId => 'feed-reader',
+    moduleType => 'app',
+    pkg => 'QoDesk.FeedReader',
+    iconCls => 'feed-reader-icon',
+    shortcutIconCls => 'feed-reader-shortcut',
+    text => 'Feed Reader',
+    tooltip => '<b>Feed Reader</b><br />Read feeds and search the extjs forums',
+    files => [
+        'feed-reader.css',
+        'feed-reader.js',
+        'feed-window.js',
+        'feed-grid.js',
+        'main-panel.js',
+        'feed-panel.js',
+        'tab-close-menu.js'
+    ]
+}
