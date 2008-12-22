@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-open ( my $fh, "VERSION" ) or die "VERSION: $!";
+open ( my $fh, "cometdesktop/VERSION" ) or die "VERSION: $!";
 
 my ( $v ) = <$fh>;
 chomp $v;
@@ -12,6 +12,6 @@ my $file = "cometdesktop-${v}.zip";
 
 system("rm $file") if ( -e $file );
 
-system('zip -r '.$file.' .htaccess * -x@tools/exclude.list -i@tools/include.list');
+system('zip -r '.$file.' cometdesktop -x@tools/exclude.list -i@tools/include.list');
 
 print "\n\ncreated $file\n";
