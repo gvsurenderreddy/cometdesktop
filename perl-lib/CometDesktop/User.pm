@@ -280,6 +280,7 @@ sub user_data {
             session_duration
             total_time
         )};
+        # TODO flag for group_admin
         $self->is_admin( defined $data->{groups_id} && $data->{groups_id} == 1 ? 1 : 0 );
         $self->is_guest( defined $data->{groups_id} && $data->{groups_id} == 3 ? 1 : 0 );
     }
