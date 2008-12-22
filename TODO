@@ -11,9 +11,12 @@ Comet Desktop - TODO
     add onunload confirmation
     document events on the wiki
     add a cookbook to the wiki
+    add $desktop->tmp that points to a tmp dir
+      with conf var
 
 - system/login/*
     improve the look of the login page
+    add missing extjs lib detection
 
 - system/modules/admin-modules/ux/drawer.js
     this module extends Ext.Window.DD, investigate if it affects DnD
