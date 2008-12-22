@@ -46,33 +46,34 @@ Ext.app.Registry = Ext.extend(Ext.app.Module, {
 		};
 
         Ext.state.Manager.setProvider(new Ext.state.RegistryProvider( { state:desktopConfig.registry } ));
-	},
-
-
-    createWindow: Ext.emptyFn
+	}
 
 });
 
 
-Ext.state.RegistryProvider = function() {
-    Ext.state.RegistryProvider.superclass.constructor.apply(this,arguments);
-};
+Ext.state.RegistryProvider = Ext.extend(Ext.state.AJAXProvider, {
 
-Ext.extend(Ext.state.RegistryProvider, Ext.state.AJAXProvider, {
-
-    set: function(name) {
+    set: function(name, value) {
         if ( name.match( /^ext/ ) )
             return;
+        this.publish( '/desktop/registry/set', { key: name, value: value } );
         return Ext.state.RegistryProvider.superclass.set.apply(this, arguments);
     },
     
     get: function(name) {
         if ( name.match( /^ext/ ) )
             return;
-        return Ext.state.RegistryProvider.superclass.get.apply(this, arguments);
-    }
+        var value = Ext.state.RegistryProvider.superclass.get.apply(this, arguments);
+        this.publish( '/desktop/registry/get', { key: name, value: value } );
+        return value;
+    },
 
-    // clear is ok
+    clear: function(name) {
+        if ( name.match( /^ext/ ) )
+            return;
+        this.publish( '/desktop/registry/clear', { key: name } );
+        return Ext.state.RegistryProvider.superclass.clear.apply(this, arguments);
+    }
 
 });
 
