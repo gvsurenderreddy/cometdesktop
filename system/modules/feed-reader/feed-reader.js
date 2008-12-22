@@ -34,6 +34,8 @@
  *
  * This is a port from one of the samples that come with Extjs
  * http://extjs.com/deploy/dev/examples/feed-viewer/view.html
+ *
+ * It has been modified to persist the feed list
  */
 
 QoDesk.FeedViewer = {};
@@ -115,8 +117,41 @@ QoDesk.FeedReader = Ext.extend(Ext.app.Module, {
                         height:32
                     }),
             */
+    
+            var feedlist = Ext.state.Manager.get( 'feed-reader-feeds', [
+                {
+                    url: 'http://feeds.feedburner.com/extblog',
+                    text: 'ExtJS.com Blog'
+                },
+                {
+                    url: 'http://extjs.com/forum/external.php?type=RSS2',
+                    text: 'ExtJS.com Forums'
+                },
+                {
+                    url: 'http://feeds.feedburner.com/ajaxian',
+                    text: 'Ajaxian'
+                }
+            ]);
+
+            for ( var i = 0, len = feedlist.length; i < len; i++ ) {
+                feeds.addFeed(
+                    feedlist[ i ],
+                    ( i == 0 ? false : true ), // inactive
+                    ( i == 0 ? false : true ), // prevent animation
+                    true                       // don't save
+                );
+            }
+            
+            // save a copy of feedlist, or the apply from addFeed will add extra properties
+            // we don't need to save
+            var savelist = [];
+            for ( var i = 0, len = feedlist.length; i < len; i++ ) {
+                savelist.push( { url: feedlist[ i ].url, text: feedlist[ i ].text } );
+            }
+            Ext.state.Manager.set( 'feed-reader-feeds', savelist );
 
             // add some default feeds
+            /*
             feeds.addFeed({
                 url:'http://feeds.feedburner.com/extblog',
                 text: 'ExtJS.com Blog'
@@ -131,6 +166,7 @@ QoDesk.FeedReader = Ext.extend(Ext.app.Module, {
                 url:'http://feeds.feedburner.com/ajaxian',
                 text: 'Ajaxian'
             }, true);
+            */
         }
         win.show();
     }

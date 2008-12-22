@@ -1,9 +1,41 @@
 /*
- * Ext JS Library 2.2
+ * Comet Desktop
+ * Copyright (c) 2008 - David W Davis, All Rights Reserved
+ * xantus@cometdesktop.com     http://xant.us/
+ * http://code.google.com/p/cometdesktop/
+ * http://cometdesktop.com/
+ *
+ * License: GPL v3
+ * http://code.google.com/p/cometdesktop/wiki/License
+ *
+ * Comet Desktop is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License
+ *
+ * Comet Desktop is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Comet Desktop.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Comet Desktop is a fork of qWikiOffice Desktop v0.7.1
+ *
+ * -----
+ *
+ * Ext JS Library
  * Copyright(c) 2006-2008, Ext JS, LLC.
  * licensing@extjs.com
- * 
+ *
  * http://extjs.com/license
+ *
+ * -----
+ *
+ * This is a port from one of the samples that come with Extjs
+ * http://extjs.com/deploy/dev/examples/feed-viewer/view.html
+ *
+ * It has been modified to persist the feed list
  */
 
 QoDesk.FeedPanel = function() {
@@ -136,6 +168,18 @@ Ext.extend(QoDesk.FeedPanel, Ext.tree.TreePanel, {
     removeFeed: function(url){
         var node = this.getNodeById(url);
         if(node){
+            var feedlist = Ext.state.Manager.get( 'feed-reader-feeds', [] );
+            var save = false;
+            for ( var i = 0, len = feedlist.length; i < len; i++ ) {
+                if ( feedlist[ i ].url == url ) {
+                    feedlist.splice( i, 1 );
+                    save = true;
+                    break;
+                }
+            }
+            if ( save )
+                Ext.state.Manager.set( 'feed-reader-feeds', feedlist );
+
             node.unselect();
             Ext.fly(node.ui.elNode).ghost('l', {
                 callback: node.remove, scope: node, duration: .4
@@ -143,7 +187,7 @@ Ext.extend(QoDesk.FeedPanel, Ext.tree.TreePanel, {
         }
     },
 
-    addFeed : function(attrs, inactive, preventAnim){
+    addFeed : function(attrs, inactive, preventAnim, nosave){
         var exists = this.getNodeById(attrs.url);
         if(exists){
             if(!inactive){
@@ -152,6 +196,20 @@ Ext.extend(QoDesk.FeedPanel, Ext.tree.TreePanel, {
             }
             return;
         }
+        var feedlist = Ext.state.Manager.get( 'feed-reader-feeds', [] );
+        var newfeed = true;
+        for ( var i = 0, len = feedlist.length; i < len; i++ ) {
+            if ( feedlist[ i ].url == attrs.url ) {
+                newfeed = false;
+                break;
+            }
+        }
+        if ( newfeed && !nosave ) {
+            log('new feed:'+attrs.url);
+            feedlist.push( { url: attrs.url, text: attrs.text } );
+            Ext.state.Manager.set( 'feed-reader-feeds', feedlist );
+        }
+
         Ext.apply(attrs, {
             iconCls: 'feed-icon',
             leaf:true,
