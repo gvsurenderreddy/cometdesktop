@@ -3,21 +3,30 @@ Comet Desktop - README
 http://code.google.com/p/cometdesktop/
 
 
-Comet Desktop is a web desktop based off of qWikiOffice Desktop.
-Comet Desktop consists of a mix of Perl and JavaScript.
-Visit the project home page for a list of exciting features.
+Comet Desktop is a web desktop forked from qWikiOffice Desktop.
+License: GPL v3
+
+Comet Desktop's back-end is perl, and has many improvements over
+the original desktop.
+Visit the project home page for a complete list of features.
 
 
 Comet Desktop can be installed on any web server that supports CGI and Perl.
 See the INSTALL file for quick and dirty instructions
 
-See the TODO file for a list of future updates
+See the LICENSE file for license information or
+http://code.google.com/p/cometdesktop/wiki/License
 
-See the LICENSE file for license information
+You can also see a list of features and bugs at
+http://code.google.com/p/cometdesktop/issues/list or 
+
+If you have a feature you would like implemented, or a bug to report, then
+submit it at http://code.google.com/p/cometdesktop/issues/entry
+
+
 
 This project needs your help.  If you're interested, please contact the
 project lead, David Davis, at xantus@cometdesktop.com
-
 
 Thank you,
 
