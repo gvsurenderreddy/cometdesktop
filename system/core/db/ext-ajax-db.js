@@ -54,7 +54,7 @@ Ext.data.AjaxDB = Ext.extend(Ext.data.SqlDB, {
 	},
 
 	onError : function(e, type, cb, scope, error){
-        log('query error '+(error ? error : ''));
+        log('sql query error '+(error ? error : ''));
 		Ext.callback(cb, scope, [false, e]);
 	},
 
