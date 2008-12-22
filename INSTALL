@@ -5,8 +5,12 @@ http://code.google.com/p/cometdesktop/
 
 Quick and dirty install
 
+(svn checkouts already link my svn external, so you can skip this step if you checked from svn)
+download extjs v2.2 from http://extjs.com/
+unzip/untar it as lib/ext-2.2 so that the adaptor directory is at lib/ext-2.2/adaptor/
+
 edit .htaccess
-set the COMETDESKTOP_ROOT to the root dir of the cometdesktop installtion
+set the COMETDESKTOP_ROOT to the root dir of the cometdesktop installation
 
 import the database
 $ echo 'create database cometdesktop' | mysql -u root mysql
