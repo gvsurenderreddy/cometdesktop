@@ -1,4 +1,5 @@
 {
+    onDemand => 0,
     license => 'GPLv3',
     author => 'David W Davis, http://xant.us/',
     moduleId => 'videoplayer',

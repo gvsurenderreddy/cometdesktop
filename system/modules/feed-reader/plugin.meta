@@ -1,4 +1,5 @@
 {
+    onDemand => 1,
     license => 'GPLv3',
     author => 'Jack Slocum, Extjs; David W Davis, http://xant.us/',
     moduleId => 'feed-reader',
