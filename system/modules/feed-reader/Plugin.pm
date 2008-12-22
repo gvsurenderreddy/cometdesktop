@@ -23,9 +23,6 @@ sub request {
 
 sub new {
     my $class = shift;
-    # XXX this blows
-    my $path = $ENV{SCRIPT_FILENAME};
-    $path =~ s/\/\w+\.pl$/\//;
     bless( {
         @_,
         agent => 'CometDesktop/1.0',
