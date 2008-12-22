@@ -38,9 +38,11 @@ Ext.ux.Shortcuts = function(config){
     var desktopEl = Ext.get(config.renderTo)
         ,taskbarEl = config.taskbarEl;
     
+    // TODO share this common record globally
     var shortcutRecord = Ext.data.Record.create(['id', 'name', 'cls', {name:'size', type: 'float'}, {name:'lastmod', type:'date', dateFormat:'timestamp'}]);
+    // TODO load shortcuts remotely
     var store = new Ext.data.JsonStore({
-        url: 'desktop.pl',
+        url: '',
         root: 'files',
         fields: shortcutRecord
     });
@@ -88,6 +90,7 @@ Ext.ux.Shortcuts = function(config){
     );
     
     var view = new Ext.DataView({
+        id: config.viewId,
         store: store,
         tpl: tpl,
         width: '100%',
@@ -127,7 +130,7 @@ Ext.ux.Shortcuts = function(config){
                     var record = records[0];
                     if ( !record )
                         return false;
-                    log('launching '+record.data.moduleId);
+                    log('launching '+record.data.id);
                     var module = app.getModule( record.data.id );
                     if ( module && module.launcher && module.launcher.handler )
                         module.launcher.handler.call(module.launcher.scope);
