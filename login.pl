@@ -57,8 +57,6 @@ if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
     my $v = $desktop->version;
     my $http = ( $ENV{HTTPS} && $ENV{HTTPS} eq 'on' ) ? 'https' : 'http';
 
-    local $/;
-    my $out = <DATA>;
     my $ga = qq|
 <script type="text/javascript">
     var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
@@ -76,21 +74,9 @@ if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
     } else {
         $ga = '<!-- disabled, set ga_account in your config to enable -->';
     }
-    $out =~ s/\$token/$token/eg;
-    $out =~ s/\$ga/$ga/eg;
-    $out =~ s/\$v/$v/eg;
-    $out =~ s/\$http/$http/eg;
     print "Content-Type: text/html\n\n";
-    utf8::encode($out);
-    print $out;
-}
-
-1;
-
-    
 # TODO proper doctype
-__DATA__
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+my $out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -124,5 +110,12 @@ $ga
 
 <body scroll="no">
 </body>
-</html>
+</html>|;
+    utf8::encode($out);
+    print $out;
+}
+
+1;
+
+    
 
