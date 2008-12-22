@@ -130,6 +130,11 @@ Ext.extend(Ext.ux.TaskBar, Ext.util.Observable, {
 			items: [sbBox,panelWrap]
 		});
 		this.el = container.el;
+    
+        this.el.on('contextmenu', function(e) {
+            e.stopEvent();
+            // TODO menu here
+	    }, this);
 		
 		return this;
     },
