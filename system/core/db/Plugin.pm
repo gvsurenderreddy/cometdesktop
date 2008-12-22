@@ -43,7 +43,7 @@ sub db {
 #    warn "opening db: $dbname";
 
     $self->{db} = CometDesktop::DB->new(
-        'SQLite2:dbname='.$desktop->pwd.'perl-lib/tmp/user-'.$desktop->user->user_id.'-'.$dbname.'.sqlite2',
+        'SQLite2:dbname='.$desktop->pwd.'tmp/user-'.$desktop->user->user_id.'-'.$dbname.'.sqlite2',
         '',
         ''
     );
