@@ -42,9 +42,9 @@ Ext.extend(Ext.app.Module, Ext.util.Observable, {
     init : Ext.emptyFn
 });
 
-// TODO move remote load to a different module
+// TODO move onDemand to a different module
 
-Ext.app.RemoteLoaded = Ext.extend(Ext.app.Module, {
+Ext.app.loadOnDemand = Ext.extend(Ext.app.Module, {
     
     init: function(cfg) {
         this.moduleType = cfg.moduleType;
@@ -109,7 +109,7 @@ Ext.app.RemoteLoaded = Ext.extend(Ext.app.Module, {
 			url: app.connection,
             params: {
                 moduleId: this.moduleId,
-                task: 'remote-load',
+                task: 'on-demand',
                 what: 'src'
             }
 		});
