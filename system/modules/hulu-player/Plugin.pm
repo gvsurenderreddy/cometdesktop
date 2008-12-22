@@ -36,15 +36,13 @@ sub request {
 sub new {
     my $class = shift;
     # XXX this blows
-    my $path = $ENV{SCRIPT_FILENAME};
-    $path =~ s/\/\w+\.pl$/\//;
     bless( {
         @_,
         agent => 'CometDesktop/1.0',
         from => 'David Davis <xantus@xantus.org>',
         referrer => 'http://cometdesktop.com/',
         cache_params => {
-            cache_root => $path.'perl-lib/tmp',
+            cache_root => $desktop->pwd.'tmp',
             namespace => "www-hulu",
             default_expires_in => "1h",
         },
