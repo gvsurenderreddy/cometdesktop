@@ -35,7 +35,7 @@ __PACKAGE__->mk_accessors(qw(
 ));
 
 our $singleton;
-our $VERSION = '0.9';
+our $VERSION = '0.9.1';
 
 sub import {
     shift;
