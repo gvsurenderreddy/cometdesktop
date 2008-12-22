@@ -72,6 +72,7 @@ QoDesk.ToDoList = Ext.extend(Ext.app.Module, {
         		callback: function(){
         			// first time?
         			if(taskStore.getCount() < 1){
+                        /*
         				Ext.Msg.confirm('Create Tasks?', 'Your database is currently empty. Would you like to insert some demo data?', 
         					function(btn){
         						if(btn == 'yes'){
@@ -79,6 +80,9 @@ QoDesk.ToDoList = Ext.extend(Ext.app.Module, {
         						}
         						catStore.init(taskStore);
         					});
+                        */
+                        // remove this if you enable the confirm above
+        				catStore.init(taskStore);
         			}else{
         				catStore.init(taskStore);
         			}
