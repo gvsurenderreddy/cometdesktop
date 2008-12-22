@@ -53,6 +53,7 @@ Ext.Desktop = function(app) {
     
     this.shortcuts = new Ext.ux.Shortcuts({
     	renderTo: 'x-desktop',
+        viewId: 'x-desktop-view',
     	taskbarEl: taskbarEl
     });
 	
@@ -502,11 +503,20 @@ Ext.Desktop = function(app) {
     this.cmenu = new Ext.menu.Menu();
     
     desktopEl.on('contextmenu', function(e) {
-    	if (e.target.id === desktopEl.id) {
-	    	e.stopEvent();
+        if ( e.target && e.target.id )
+            log('right click on:'+e.target.id);
+        
+        e.stopEvent();
+
+        if (e.target.id == 'x-loading-mask')
+            return e.stopEvent();
+
+    	if (e.target.id == desktopEl.id || e.target.id == 'x-desktop-view' ) {
             if ( e.ctrlKey ) {
                 if ( !Ext.log ) {
-                    app.soundManager.playSound('resources/sounds/click-low.mp3');
+                    this.publish( '/desktop/sound/play', {
+                        file: 'resources/sounds/click-low.mp3'
+                    });
                     var sc = document.createElement( 'scr'+'ipt' );
                     document.body.appendChild( sc );
                     sc.onload = function() { log('CometDesktop v'+desktopConfig.version); log('Detected Browser/OS:'+app.browserOS); };
