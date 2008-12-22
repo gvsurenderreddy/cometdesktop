@@ -60,24 +60,23 @@ QoDesk = new Ext.app.App({
         if ( this.modules && this.modules.length )
             return this.modules;
         var modules = [];
-		for(var i = 0, len = this.apps.length; i < len; i++) {
-            modules.push( new Ext.app.RemoteLoaded( this.apps[ i ] ) );
-        }
+		for(var i = 0, len = this.apps.length; i < len; i++)
+            modules.push( new Ext.app.loadOnDemand( this.apps[ i ] ) );
+
         for ( var i = 0, len = desktopConfig.modules.length; i < len; i++ ) {
             var construct = eval("("+desktopConfig.modules[i]+")");
             if ( construct )
                 modules.push( new construct() );
-            else if ( window.console && window.console.log )
-                window.console.log('module: '+desktopConfig.modules[i]+' is not loaded');
+            else
+                log('module: '+desktopConfig.modules[i]+' is not loaded, or onDemand');
         }
         for ( var i = 0, len = app.startupModules.length; i < len; i++ ) {
             var construct = eval("("+app.startupModules[i]+")");
             if ( construct )
                 modules.push( new construct() );
-            else if ( window.console && window.console.log )
-                window.console.log('module: '+app.startupModules[i]+' is not loaded');
+            else
+                log('module: '+app.startupModules[i]+' is not loaded, or onDemand');
         }
-
 		return this.modules = modules;
 	},
 	
