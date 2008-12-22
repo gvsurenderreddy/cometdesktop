@@ -12,14 +12,13 @@ my %errors = (
     500 => '500 Server error',
 );
 
+# XXX common 404's can be caught here
 my $ec = 200;
 if ( $qs && $qs =~ m/^\d+$/ && exists $errors{$qs} ) {
     $error = $errors{$qs};
     $ec = $qs;
     print "Status: $qs\n";
 #    warn "$error for request: $ENV{REQUEST_URI} ".( $ENV{HTTP_COOKIE} ? "Cookie:$ENV{HTTP_COOKIE}" : '' )."\n";
-#    if ( $desktop->user->logged_in ) {       
-#    }
 }
 
 print "Content-Type: text/html\n\n";
