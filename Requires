@@ -1,0 +1,12 @@
+
+Class::Accessor::Fast
+Time::HiRes
+Digest::SHA1
+HTTP::Date
+JSON::Any
+JavaScript::Minifier
+CGI
+DBI
+
+# ajax sql module
+DBD::Sqlite2
