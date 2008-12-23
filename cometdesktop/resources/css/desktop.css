@@ -1041,6 +1041,7 @@ ul.ux-tray-strip li.ux-tray-edge {
 	border: 0 none;
 	position: relative;
     overflow: hidden;
+	cursor: default;
     zoom:1;
     -moz-user-select: none;
     -khtml-user-select: none;
