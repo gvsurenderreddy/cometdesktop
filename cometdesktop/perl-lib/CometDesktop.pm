@@ -140,7 +140,7 @@ sub out {
         print "\n\n";
         $self->sent_header( 1 );
     }
-    print join( "\n", @out );
+    print join( "\n", @out ) if ( @out );
 
     return;
 }
@@ -149,7 +149,7 @@ sub header {
     my $self = shift;
     push( @{$self->{header}}, @_ ) if ( @_ );
 
-    return join( "\n", @{$self->{header}} );
+    return join( "\n", @{$self->{header}} ).( @{$self->{header}} ? "\n" : '' );
 }
 
 sub user {
@@ -975,8 +975,11 @@ sub cmd_include {
 sub cmd_load_config {
     my ( $self, $cmd ) = @_;
 
-    my @set = ( $cmd =~ /^load_config (.+)$/i );
-    return $self->load_config( $set[0] ) if ( defined $set[0] );
+    my @set = ( $cmd =~ /^load_config (if exists )?(.+)$/i );
+    return $self->load_config( $set[0] ) if ( $#set == 0 );
+    return $self->load_config( $set[1] ) if ( $#set == 1 && -e $set[1] );
+    
+    return;
 }
 
 sub set_env {
