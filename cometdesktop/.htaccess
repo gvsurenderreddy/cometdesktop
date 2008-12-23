@@ -1,4 +1,4 @@
-SetEnv COMETDESKTOP_ROOT "/home/cometdesktop/"
+SetEnv COMETDESKTOP_ROOT ""
 
 Options -Indexes -Includes
 
