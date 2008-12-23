@@ -6,10 +6,13 @@ v0.9.1 - Dec 22, 2008
 v0.9.2 - Dec 2008
 	* added config param 'secure_login'
 	* modified login.pl to use the secure_login flag
-	* fixed exception handling
 	* fixed the db record for Sprocket Socket in qo_files
 	  execute this on your db: update qo_files set path='lib/Sprocket/' where id=11;
+	* fixed exception handling
 	* added exception handling to the DB library
 	* added methods to handle http output
 	* overhauled the error handling in CometDesktop.pm
-
+	* added files: Requires, Changelog
+	* added 'if exists' to load_config
+	* moved the sound manger flash object to the bottom right, and changed its
+	bgcolor to black
