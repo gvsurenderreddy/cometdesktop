@@ -23,7 +23,7 @@ function SoundManager(smURL,smID) {
   this.allowPolling = true;        // allow flash to poll for status update (required for "while playing", peak, sound spectrum functions to work.)
   this.useMovieStar = false;	   // enable support for Flash 9.0r115+ (codename "MovieStar") MPEG4 audio + video formats (AAC, M4V, FLV, MOV etc.)
   this.useHighPerformance = true;  // flash positioning trick, improves JS/flash callback speed, minimizes delay
-  this.bgColor = '#ffffff';	   // movie (.swf) background color, useful if showing on-screen for video etc.
+  this.bgColor = '#000000';	   // movie (.swf) background color, useful if showing on-screen for video etc.
 
   this.defaultOptions = {
     'autoLoad': false,             // enable automatic loading (otherwise .load() will be called on demand with .play(), the latter being nicer on bandwidth - if you want to .load yourself, you also can)
@@ -503,20 +503,20 @@ function SoundManager(smURL,smID) {
         var s = null;
         if (_s.useHighPerformance) {
           s = {
- 	    position: 'fixed',
-	    width: '8px',
+ 	        position: 'fixed',
+     	    width: '8px',
             height: '8px', // must be at least 6px for flash to run fast. odd? yes.
             bottom: '0px',
-            left: '0px',
-	    zIndex:-1 // sit behind everything else
+            right: '0px',
+            zIndex:-1 // sit behind everything else
           }
         } else {
           s = {
             position: 'absolute',
-	    width: '1px',
+            width: '1px',
             height: '1px',
             bottom: '0px',
-            left: '0px'
+            right: '0px'
           }
         }
         var x = null;
