@@ -265,7 +265,6 @@ Ext.Desktop = function(app) {
 	
 	this.setWallpaper = function(o, skipNotify) {
 		if (o && o.id && o.name && o.pathtofile) {
-			
 			var notifyWin;
             
             if ( !skipNotify ) {
@@ -279,7 +278,9 @@ Ext.Desktop = function(app) {
 			
 	    		var task = new Ext.util.DelayedTask(verify, this);
     			task.delay(200);
-			}
+			} else {
+				document.body.background = o.pathtofile;
+            }
 			
 			this.config.styles.wallpaper = o;
 		}
