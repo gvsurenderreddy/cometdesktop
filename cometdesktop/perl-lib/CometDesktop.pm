@@ -12,13 +12,13 @@ package CometDesktop;
 use strict;
 use warnings;
 
+use CometDesktop::Exception;
+
 use Class::Accessor::Fast;
 use base 'Class::Accessor::Fast';
 
 __PACKAGE__->mk_accessors(qw(
-    user
     cgi
-    db
     db_dsn
     db_user
     db_pass
@@ -33,10 +33,12 @@ __PACKAGE__->mk_accessors(qw(
     main_conf
     ga_account
     secure_login
+    content_type
+    sent_header
 ));
 
 our $singleton;
-our $VERSION = '0.9.1';
+our $VERSION = '0.9.2';
 
 sub import {
     shift;
@@ -98,6 +100,8 @@ sub new {
         version => $VERSION,
         revision => '',
         secure_login => 0,
+        header => [],
+        content_type => undef,
         @_
     });
    
@@ -120,31 +124,55 @@ sub new {
     
     unless ( $self->cgi ) {
         require CGI;
-        import CGI;
         $self->cgi( new CGI );
     }
     
-    unless ( $self->db ) {
+    return $self;
+}
+
+# simple http handler
+sub out {
+    my ( $self, @out ) = @_;
+    unless ( $self->sent_header ) {
+        print $self->header;
+        my $type = $self->content_type;
+        print "Content-Type: $type\n" if ( defined $type );
+        print "\n\n";
+        $self->sent_header( 1 );
+    }
+    print join( "\n", @out );
+
+    return;
+}
+
+sub header {
+    my $self = shift;
+    push( @{$self->{header}}, @_ ) if ( @_ );
+
+    return join( "\n", @{$self->{header}} );
+}
+
+sub user {
+    my $self = shift;
+    unless ( $self->{user} ) {
+        require CometDesktop::User;
+        $self->{user} = CometDesktop::User->new( $self );
+    }
+    return $self->{user};    
+}
+
+sub db {
+    my $self = shift;
+    unless ( $self->{db} ) {
         require CometDesktop::DB;
         $self->error( "db_dsn not defined, set this in your config file\n" )->throw unless ( $self->{db_dsn} );
-        $self->db( CometDesktop::DB->new(
+        $self->{db} = CometDesktop::DB->new(
             $self->{db_dsn},
             $self->{db_user} || '',
             $self->{db_pass} || '',
-        ) );
-        if ( $self->db->{error} ) {
-            warn $self->db->{error};
-            die "db error";
-        }
+        );
     }
-    
-    unless ( $self->user ) {
-        require CometDesktop::User;
-#        import CometDesktop::User;   
-        $self->user( CometDesktop::User->new( $self ) );
-    }
-    
-    return $self;
+    return $self->{db};
 }
 
 sub get_svn_revision {
@@ -168,6 +196,7 @@ sub session_cookie {
     require Digest::SHA1;
     
     unless ( defined $sid && $sid =~ m/^[a-f0-9]{40}\/[a-f0-9]{40}$/ ) {
+        # TODO send a cookie reset header
         warn "session id doesn't match sha1/sha1 sid[$sid]" if ( defined $sid );
         return undef;
     }
@@ -183,6 +212,7 @@ sub session_cookie {
     }
 
     unless ( $code eq $check ) {
+        # TODO send a cookie reset header
         warn "session $sid doesn't pass token check against $check";
         return undef;
     }
@@ -204,7 +234,6 @@ sub css_includes {
         T.id=S.qo_themes_id AND
         S.qo_members_id=? AND S.qo_groups_id=?
     |,[$ud->{id},$ud->{groups_id}],\@t);
-    return '' if ( $self->db->{error} );
 
     my @files;
 
@@ -218,7 +247,6 @@ sub css_includes {
             WHERE
                 qo_members_id=0
         |);
-        return '' if ( $self->db->{error} );
     }
 
     foreach my $h ( @t ) {
@@ -228,10 +256,8 @@ sub css_includes {
     # reusing @t
     # TODO union
     @t = $self->db->arrayHashQuery(qq|SELECT path, name FROM qo_files WHERE type='css' AND active='true' ORDER BY id|);
-    return '' if ( $self->db->{error} );
     
     push( @t, $self->db->arrayHashQuery(qq|SELECT path, name FROM qo_dialogs WHERE type='css'|) );
-    return '' if ( $self->db->{error} );
 
     $self->db->arrayHashQuery(qq|
     SELECT
@@ -268,18 +294,15 @@ sub call_plugin {
     WHERE
         GM.qo_groups_id=?
     |,[$self->user->group_id],$modules);
-    if ( $self->db->{error} ) {
-        warn $self->db->{error};
-        return 0;
-    }
     # XXX hack
     $modules->{'ajax-db'} = 1;
     
     if ( !exists( $modules->{$module} ) ) {
         if ( $module eq 'on-demand' ) {
+            # TODO send a cookie reset header?
             warn "User tried to get the source for an unauthorized module: $module\n";
 
-            print "/* unauthorized */";
+            $self->out( "/* unauthorized */" );
             return 1;
         } else {
             return;
@@ -288,7 +311,6 @@ sub call_plugin {
 
     my $data = {};
     $self->db->hashQuery(qq|SELECT path FROM qo_modules WHERE moduleId=? AND active='true'|,[$module],$data);
-    return if ( $self->db->{error} );
     # TODO fix this hack
     if ( $module eq 'ajax-db' ) {
         $data->{path} = 'system/core/db/';
@@ -302,36 +324,40 @@ sub call_plugin {
         
             my $metadata = eval $meta;
             if ( $@ ) {
-               print "/* error loading meta file */\n";
+               $self->out( "/* error loading meta file */\n" );
                return 1;
             } else {
                 if ( $metadata->{onDemand} ) {
                     unless ( $metadata->{files} && ref( $metadata->{files} ) eq 'ARRAY' ) {
-                        print "/* nothing to load */\n";
+                        $self->out( "/* nothing to load */\n" );
                         return 1;
                     }
                     foreach ( @{$metadata->{files}} ) {
                         next unless ( m/\.js$/ );
                         if ( -e $path.$data->{path}.$_ ) {
                             my $src = slurp( $path.$data->{path}.$_ );
-                            if ( $self->user->is_admin == 1 ) {
-                                print "/* $data->{path}$_ */\n";
-                                print $src;
+                            if ( $self->user->is_admin ) {
+                                $self->out( "/* $data->{path}$_ */", $src );
                             } else {
-                                print $self->js_compress($src);
+                                $self->out( $self->js_compress($src) );
                             }
                         } else {
-                            print "/* $data->{path}$_ not found */\n";
+                            $self->out( "/* $data->{path}$_ not found */\n" );
+                            $self->out( "log('javascript: file not found: $data->{path}$_');\n" ) if ( $self->user->is_admin );
                         }
                     }
                 } else {
-                    print "/* onDemand disabled */\n";
-                    print "app.publish( '/desktop/notify', { html: 'onDemand disabled for this module', title:'Error' } );\n";
+                    $self->out(
+                        "/* onDemand disabled */",
+                        "app.publish( '/desktop/notify', { html: 'onDemand disabled for this module', title:'Error' } );\n"
+                    );
                 }
             }
         } else {
-            print "/* not an onDemand module */\n";
-            print "app.publish( '/desktop/notify', { html: 'Not an onDemand module', title:'Error' } );\n";
+            $self->out(
+                "/* not an onDemand module */",
+                "app.publish( '/desktop/notify', { html: 'Not an onDemand module', title:'Error' } );\n"
+            );
         }
         return 1;
     }
@@ -374,9 +400,7 @@ sub javascript_hash {
     my $self = shift;
 
     my @t = $self->db->arrayHashQuery(qq|SELECT * FROM qo_files WHERE type='javascript' AND active='true' ORDER BY id|);
-    return '' if ( $self->db->{error} );
     push( @t, $self->db->arrayHashQuery(qq|SELECT * FROM qo_dialogs WHERE type='javascript'|) );
-    return '' if ( $self->db->{error} );
 
     $self->db->arrayHashQuery(qq|
     SELECT
@@ -389,7 +413,6 @@ sub javascript_hash {
     WHERE
         GM.qo_groups_id=?
     |,[$self->user->group_id],\@t);
-    return '' if ( $self->db->{error} );
 
     my $path = $self->pwd;
 
@@ -427,9 +450,7 @@ sub javascript_include {
     my $self = shift;
     
     my @t = $self->db->arrayHashQuery(qq|SELECT * FROM qo_files WHERE type='javascript' AND active='true' ORDER BY id|);
-    return '' if ( $self->db->{error} );
     push( @t, $self->db->arrayHashQuery(qq|SELECT * FROM qo_dialogs WHERE type='javascript'|) );
-    return '' if ( $self->db->{error} );
 
     $self->db->arrayHashQuery(qq|
     SELECT
@@ -443,7 +464,6 @@ sub javascript_include {
     WHERE
         qo_groups_id=?
     |,[$self->user->group_id],\@t);
-    return '' if ( $self->db->{error} );
     
     my $path = $self->pwd;
 
@@ -471,17 +491,20 @@ sub javascript_include {
     if ( $ENV{HTTP_IF_MODIFIED_SINCE} ) {
         my $mtime = HTTP::Date::str2time($ENV{HTTP_IF_MODIFIED_SINCE});
         if ( $mtime && $lastmod <= $mtime ) {
-            print "Status: 304\n";
-            print "Last-Modified: $lm\n";
-            print "Content-Length: 0\n\n";
+            $self->header(
+                "Status: 304",
+                "Last-Modified: $lm",
+                "Content-Length: 0"
+            );
+            $self->out();
             return;
         }
     }
     
-    print "Last-Modified: $lm\n";
-    print "Content-Type: text/javascript\n\n";
+    $self->header( "Last-Modified: $lm" );
+    $self->content_type ( 'text/javascript' );
     my $version = $self->version;
-    print qq|/*
+    $self->out( qq|/*
  * Comet Desktop
  * Copyright (c) 2008 - David W Davis, All Rights Reserved
  * xantus\@cometdesktop.com     http://xant.us/
@@ -524,7 +547,7 @@ sub javascript_include {
  * Comet Desktop v$version
  * Last Modified: $lm
  * 
- */\n\n|;
+ */\n\n| );
     my $module_meta = {};
     foreach my $h ( @t ) {
         if ( $h->{meta} ) {
@@ -535,32 +558,35 @@ sub javascript_include {
                 
                 my $metadata = eval $module_meta->{$h->{moduleId}};
                 if ( $@ ) {
-                    print "/* error loading meta file for $h->{moduleId}, loading inline */\n";
+                    $self->out( "/* error loading meta file for $h->{moduleId}, loading inline */\n" );
                 } else {
                     $module_meta->{$h->{moduleId}} = $metadata;
                     if ( $metadata->{onDemand} ) {
                         delete $metadata->{files};
-                        print "/* $h->{moduleId} - onDemand */\n";
-                        print "app.register(".$self->encode_json( $metadata ).");\n";
+                        $self->out(
+                            "/* $h->{moduleId} - onDemand */",
+                            "app.register(".$self->encode_json( $metadata ).");\n"
+                        );
                         next;
                     } else {
                         # meta file exists, but onDemand is disabled
-                        print "/* onDemand disabled for $h->{moduleId}, loading inline */\n";
+                        $self->out( "/* onDemand disabled for $h->{moduleId}, loading inline */\n" );
                     }
                 }
             }
         }
         if ( $h->{stat}->[2] ) {
             my $src =  slurp( $path.$h->{path}.$h->{name} );
-            if ( $self->user->is_admin == 1 ) {
-                print "/* $h->{path}$h->{name} ($h->{stat}->[0] bytes) */\n";
-                print $src;
+            if ( $self->user->is_admin ) {
+                $self->out( "/* $h->{path}$h->{name} ($h->{stat}->[0] bytes) */", $src );
             } else {
-                print $self->js_compress($src);
+                $self->out( $self->js_compress($src) );
             }
         } else {
-            print "/* $h->{path}$h->{name} not found */\n"
-                if ( $self->user->is_admin == 1 );
+            $self->out(
+                "/* $h->{path}$h->{name} not found */",
+                "log('javascript: file not found: $h->{path}$h->{name}');\n"
+            ) if ( $self->user->is_admin );
         }
     }
 
@@ -581,7 +607,6 @@ sub get_modules {
     WHERE
         gm.qo_groups_id=?
     |,[ $group_id || $self->user->group_id ],\@t);
-    return '' if ( $self->db->{error} );
 
     # XXX hack
     # move registry to the top
@@ -649,8 +674,8 @@ sub get_config {
     my $styles = $self->get_styles( 0, 0 );
     my $group = $self->get_styles( 0, $ud->{groups_id} );
     my $member = $self->get_styles( $ud->{id}, $ud->{groups_id} );
-    $self->_merge( $styles, $group );
-    $self->_merge( $styles, $member );
+    _merge( $styles, $group );
+    _merge( $styles, $member );
     my $user = $self->user;
 #    require Socket;
     return {
@@ -674,7 +699,7 @@ sub get_config {
         sessionId => $user->session_id,
         localmode => $self->localmode,
         version => $self->version,
-#        env => ( $self->user->is_admin == 1 ? \%ENV : {} ),
+#        env => ( $self->user->is_admin ? \%ENV : {} ),
     };
 }
 
@@ -690,10 +715,6 @@ sub get_registry {
     WHERE
         qo_members_id=?
     |,[$self->user->user_id],$state);
-    if ( $self->db->{error} ) {
-        warn $self->db->{error};
-        return 0;
-    }
 
     while( my ( $k, $v ) = each( %$state ) ) {
         $state->{$k} = ( $v =~ m/^(\[|\{)/ ) ? $self->decode_json( $v ) : ( ( $v && $v =~ m/^"(.*)"$/ ) ? $1 : $v );
@@ -723,9 +744,6 @@ sub get_styles {
             INNER JOIN qo_wallpapers AS W ON W.id = S.qo_wallpapers_id
     WHERE
         qo_members_id=? AND qo_groups_id=?|,[@_],$h);
-    if ( $self->db->{error} ) {
-        warn $self->db->{error};
-    }
     # TODO util function to do this
     $h->{transparency} = ( defined $h->{transparency} && $h->{transparency} eq 'true' ) ? $self->json_true : $self->json_false;
     return $h;
@@ -745,10 +763,6 @@ sub update_styles {
     WHERE
         qo_members_id=? AND qo_groups_id=?
     |,[ @{$ud}{qw( id groups_id )}]);
-    if ( $self->db->{error} ) {
-        warn $self->db->{error};
-        return 0;
-    }
     
     # XXX this is crap, and validate these are ints
     $data->{qo_themes_id} = delete $data->{theme};
@@ -766,10 +780,6 @@ sub update_styles {
         $self->db->insertWithHash('qo_styles',$data);
     }
 
-    if ( $self->db->{error} ) {
-        warn $self->db->{error};
-        return 0;
-    }
     return 1;
 }
 
@@ -786,10 +796,6 @@ sub update_launchers {
     FROM 
         qo_launchers
     |) };
-    if ( $self->db->{error} ) {
-        warn $self->db->{error};
-        return 0;
-    }
 
     return unless ( $launchers->{$data->{what}} );
 
@@ -800,10 +806,6 @@ sub update_launchers {
         qo_modules
     |) };
     #WHERE active='true'
-    if ( $self->db->{error} ) {
-        warn $self->db->{error};
-        return 0;
-    }
 
     $self->db->doQuery(qq|
     DELETE
@@ -812,11 +814,7 @@ sub update_launchers {
     WHERE
         qo_members_id=? AND qo_groups_id=? AND qo_launchers_id=?
     |,[ @{$ud}{qw( id groups_id )}, $launchers->{$data->{what}} ]);
-    if ( $self->db->{error} ) {
-        warn $self->db->{error};
-        return 0;
-    }
-    warn "delete ".join(',',(@{$ud}{qw( id groups_id )}, $launchers->{$data->{what}}));
+    #warn "delete ".join(',',(@{$ud}{qw( id groups_id )}, $launchers->{$data->{what}}));
     
     my $ids = $self->decode_json( $data->{ids} );
     return 0 unless ( ref( $ids ) eq 'ARRAY' );
@@ -838,12 +836,7 @@ sub update_launchers {
         next unless ( $mid );
         $insert->{qo_modules_id} = $mid;
         $self->db->insertWithHash('qo_modules_has_launchers',$insert);
-        last if ( $self->db->{error} );
         $insert->{sort_order}++;
-    }
-    if ( $self->db->{error} ) {
-        warn $self->db->{error};
-        return 0;
     }
     return 1;
 }
@@ -902,8 +895,9 @@ sub js_compress {
 }
 
 # merge hash keys overwriting $x with keys from $y
+# not an object method
 sub _merge {
-    my ( $self, $x, $y ) = @_;
+    my ( $x, $y ) = @_;
     while( my ( $k, $v ) = each ( %{$y} ) ) {
         $x->{$k} = $v if ( defined $v );
     }
@@ -911,8 +905,7 @@ sub _merge {
 
 sub error {
     return CometDesktop::Exception->new(
-        error => shift,
-        caller => [caller()],
+        error => $_[1],
         @_
     );
 }
@@ -993,30 +986,6 @@ sub set_env {
     $ENV{ $set[0] } = $set[1];
     
     return;
-}
-
-1;
-
-package CometDesktop::Exception;
-
-use strict;
-use warnings;
-
-
-sub new {
-    my $class = shift;
-    # XXX save caller
-    bless( { error => shift, @_ }, ref $class || $class );
-}
-
-*throw = *plain_throw;
-
-sub plain_throw {
-    my $self = shift;
-    print "Status: 500\n";
-    print "Content-Type: text/plain\n\n";
-    print 'Error: '.$self->{error};
-    die $self->{error};
 }
 
 1;

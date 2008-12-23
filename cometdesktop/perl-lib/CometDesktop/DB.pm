@@ -8,21 +8,34 @@
 # http://code.google.com/p/cometdesktop/wiki/License
 
 # This code is from from sdnwsg, which I am a coauthor (teknikill)
-# License: GPL
+# sdnwsg's license: GPL
 package CometDesktop::DB;
 
 use strict;
 use Time::HiRes qw(time);
-use Carp;
 use DBI;
+use CometDesktop::Exception;
 
 sub new {
     my $class = shift;
-    my $self = bless( {}, $class || ref( $class ) );
+    my $self = bless( {
+        last_query => '(no query available)',
+    }, $class || ref( $class ) );
     
     $self->{dbh} = $self->get_dbh( @_ );
 
     return $self;
+}
+
+sub error {
+    my $self = shift;
+	my $dbh = defined $self->{use_dbh} ? $self->{use_dbh} : "dbh";
+    my $error = defined $_[0] ? shift : $self->{$dbh}->errstr;
+
+    return CometDesktop::Exception->new(
+        error => $error,
+        @_
+    );
 }
 
 sub debug_start {
@@ -47,7 +60,7 @@ sub debug_end {
 
 sub quote_in {
 	my $p = shift;
-	my $query = shift;
+    my $query = $p->{last_query} = shift;
 
 	my $g = sub { $p->{dbh}->quote($p->{in}{$_[0]}) };
 	$query =~ s/\@\{(\w+)\}/$g->($1)/eg;
@@ -57,10 +70,10 @@ sub quote_in {
 
 =item get_dbh($dbistring,$user,$pass)
 
-C<$dbh [$p->{error}]>
+C<$dbh>
 
 Get a connection to a database and returns a DBI object.
-If an error occured $p->{error} will be populated.
+If an error occurs then an exception is thrown
 
 =cut
 
@@ -73,15 +86,16 @@ sub get_dbh {
 	# connect to a database
 	my $dbh;
 
-	eval { $dbh = DBI->connect("dbi:$dbistring",$username,$passwd, { RaiseError => 1 } ) };
-	if ($@) {
-		my $error = $@;
+	eval {
+        $dbh = DBI->connect("dbi:$dbistring",$username,$passwd, { RaiseError => 0 } )
+    };
+	if ( $@ || !$dbh ) {
+		my $error = $@ || $DBI::err;
 		# capture some common errors
 		if ($error =~ m/ failed: (.*) at/) {
-			$p->{error} = "Database Error: $@";
+			$error = "Database Error: $@";
 		}
-		undef $@;
-		return undef;
+        $p->error( $error )->throw;
 	}
 
 	# turn RaiseError off so any query errors we get don't trip up and throw an error
@@ -92,7 +106,7 @@ sub get_dbh {
 
 =item keyvalHashQuery($query,[\%hashref])
 
-C<1 or %hash || 0 [$p->{error}]>
+C<1 or %hash || 0>
 
 Runs the query and build a hash using the first column as the key and the
 second column as and value.
@@ -121,8 +135,8 @@ sub keyvalHashQuery {
 
 	my %data;
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth->execute(@$bind));
+	$p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($sth->execute(@$bind));
 
 	$p->{queries}++;
 	
@@ -145,7 +159,7 @@ sub keyvalHashQuery {
 
 =item arrayHashQuery($query,[\@arrayref])
 
-C<1 or @array || 0 [$p->{error}]>
+C<1 or @array || 0>
 
 Runs the query and creates a array of hashes data structure from the
 results.  Uses the column names as the hash keys.
@@ -179,8 +193,8 @@ sub arrayHashQuery {
 
 	my @data;
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth->execute(@$bind));
+	$p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($sth->execute(@$bind));
 
 	$p->{queries}++;
 
@@ -203,7 +217,7 @@ sub arrayHashQuery {
 
 =item sthQuery($query)
 
-C<$sth || 0 [$p->{error}]>
+C<$sth || 0>
 
 Returns a statement handle which can then be used to fetchrow_array or fetchrow_hashref.
 
@@ -222,8 +236,8 @@ sub sthQuery {
 
 	my $st = debug_start($p,$query,(join ' ', caller)) if (defined($p->{dbdbf}));
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth->execute(@$bind));
+	$p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($sth->execute(@$bind));
 
 	$p->{queries}++;
 
@@ -234,7 +248,7 @@ sub sthQuery {
 
 =item hashHashQuery($query,$primarykey,[\%hashref])
 
-C<1 or %hash || 0 [$p->{error}]>
+C<1 or %hash || 0>
 
 Runs a given query and builds a hash of hashes data structure.  If a hash reference
 is provided, it fills that, otherwise it returns a hash.
@@ -268,8 +282,8 @@ sub hashHashQuery {
 
 	my %data;
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth->execute(@$bind));
+	$p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($sth->execute(@$bind));
 
 	$p->{queries}++;
 
@@ -301,7 +315,7 @@ sub hashHashQuery {
 
 =item hashQuery($query,[\%hashref])
 
-C<1 or %hash || 0 [$p->{error}]>
+C<1 or %hash || 0>
 
 Runs the query and then either fills in a hashref provided or returns a hash.
 
@@ -326,8 +340,8 @@ sub hashQuery {
 
 	my %data;
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth->execute(@$bind));
+	$p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($sth->execute(@$bind));
 
 	$p->{queries}++;
 
@@ -356,7 +370,7 @@ sub hashQuery {
 
 =item arrayQuery($query,[\@arrayref])
 
-C<1 or @array || 0 [$p->{error}]>
+C<1 or @array || 0>
 
 Runs query, takes the first column of the results and pushes into provided
 arrayref or returns array.
@@ -378,8 +392,8 @@ sub arrayQuery {
 
 	my $st = debug_start($p,$query,(join ' ', caller)) if (defined($p->{dbdbf}));
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth->execute(@$bind));
+	$p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($sth->execute(@$bind));
 
 	$p->{queries}++;
 
@@ -403,7 +417,7 @@ sub arrayQuery {
 
 =item scalarQuery($query,[\$scalarref])
 
-C<1 or $scalar || 0 [$p->{error}]>
+C<1 or $scalar>
 
 Runs the query and takes the first row, first column results and returns then in the
 provided scalar reference or just returnes the value.
@@ -427,8 +441,8 @@ sub scalarQuery {
 
 	my $data;
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth->execute(@$bind));
+    $p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($sth->execute(@$bind));
 
 	$p->{queries}++;
 
@@ -447,7 +461,7 @@ sub scalarQuery {
 
 =item doQuery($query,\%hashref)
 
-C<1 || 0 [$p->{error}]>
+C<1 || 0>
 
 Run a query.
 
@@ -463,8 +477,8 @@ sub doQuery {
 
 	my $st = debug_start($p,$query,(join ' ', caller)) if (defined($p->{dbdbf}));
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($rv = $sth->execute(@$bind));
+	$p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($rv = $sth->execute(@$bind));
 
 	$p->{queries}++;
 
@@ -475,7 +489,7 @@ sub doQuery {
 
 =item updateWithHash($table,$column,$row,\%hashref)
 
-C<1 || 0 [$p->{error}]>
+C<1 || 0>
 
 Take the given hash reference and updates the $table where $column=$row.
 
@@ -483,20 +497,6 @@ The keys of the hashref must match table column names.
 
 If the value of a hash key is "", empty or the string "NULL" then the field
 will be updated with a database NULL entry.
-
-If the value of the hash starts with "_raw:" then the remainder of the hash value
-will be inserted directly instead of with a key binding.  An example might be if
-you want to insert the current time, your hash value would be something like:
-
-	_raw:now()
-
-Or if you wanted to use a subselect to insert information:
-
-	_raw:(SELECT id FROM lookup_table WHERE name='test')
-
-The _raw: option can be very flexible but also very dangerous.  For this reason
-any incoming httpd parameter keys are dropped that contains strings that start
-with "_raw:".
 
 =cut
 
@@ -537,8 +537,8 @@ sub updateWithHash {
 
 	my $st = debug_start($p,$query,(join ' ', caller)) if (defined($p->{dbdbf}));
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($rows = $sth->execute(@values));
+    $p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($rows = $sth->execute(@values));
 
 	$p->{queries}++;
 
@@ -549,7 +549,7 @@ sub updateWithHash {
 
 =item updateWithWhere($table,$where,\%hashref)
 
-C<1 || 0 [$p->{error}]>
+C<1 || 0>
 
 Works exactly the same as updateWithHash except you can use a statement
 to define which rows get updated.
@@ -572,15 +572,17 @@ sub updateWithWhere {
 	my @querylist;
 	my $dbh = (defined($p->{use_dbh})) ? $p->{use_dbh} : "dbh";
 
-	croak "Where clause not defined" unless($where);
+	$p->error( "Where clause not defined" )->throw unless($where);
 
 	foreach $key (keys %$hash) {
 		if ($$hash{$key} eq "") {
 			push @querylist, qq($key=NULL);
 		} elsif ($$hash{$key} eq "NULL") {
 			push @querylist, qq($key=NULL);
-		} elsif ($$hash{$key} =~ /^_raw:(.+)$/) {
-			push @querylist, qq($key=$1);
+		} elsif ($$hash{$key} =~ /^NOW\(\)$/) {
+			push @querylist, "$key=NOW()";
+#		} elsif ($$hash{$key} =~ /^_raw:(.+)$/) {
+#			push @querylist, qq($key=$1);
 		} else {
 			push @querylist, qq($key=?);
 			push @values, $$hash{$key};
@@ -595,8 +597,8 @@ sub updateWithWhere {
 
 	my $st = debug_start($p,$query,(join ' ', caller)) if (defined($p->{dbdbf}));
 
-	croak $p->{$dbh}->errstr."\n$query\n" unless($sth = $p->{$dbh}->prepare($query));
-	croak $p->{$dbh}->errstr."\n$query\n" unless($rows = $sth->execute(@values));
+	$p->error->throw unless($sth = $p->{$dbh}->prepare($query));
+	$p->error->throw unless($rows = $sth->execute(@values));
 
 	$p->{queries}++;
 
@@ -607,7 +609,7 @@ sub updateWithWhere {
 
 =item insertWithHash($table,\%hashref,[$insertidfield || \$lastinsertid])
 
-C<1 or $lastinsertid || 0 [$p->{error}]>
+C<1 or $lastinsertid || 0>
 
 Take the given hash reference and inserts the $table.
 
@@ -616,20 +618,6 @@ The keys of the hashref must match table column names.
 If the value of a hash key is "", empty or the string "NULL" then the field will
 not be inserted and with either contain a NULL value in the database or whatever
 value is defined as default by the database.
-
-If the value of the hash starts with "_raw:" then the remainder of the hash value
-will be inserted directly instead of with a key binding.  An example might be if
-you want to insert the current time, your hash value would be something like:
-
-	_raw:now()
-
-Or if you wanted to use a subselect to insert information:
-
-	_raw:(SELECT id FROM lookup_table WHERE name='test')
-
-The _raw: option can be very flexible but also very dangerous.  For this reason
-any incoming httpd parameter keys are dropped that contains strings that start
-with "_raw:".
 
 If the database is postgresql and you want to find out what the primary key of the
 inserted row was, include the primary key field name as $insertidfield.
@@ -661,8 +649,12 @@ sub insertWithHash {
 		next if ($$hash{$key} eq "");
 		next if ($$hash{$key} eq "NULL");
 		push @keys, qq($key);
-		if ($$hash{$key} =~ /^_raw:(.+)$/) {
-			push @bind, $1;
+#		if ($$hash{$key} =~ /^_raw:(.+)$/) {
+#		    push @bind, $1;
+#		    next;
+#		}
+		if ($$hash{$key} =~ /^NOW\(\)$/) {
+			push @bind, 'NOW()';
 			next;
 		}
 		push @bind, "?";
@@ -677,25 +669,32 @@ sub insertWithHash {
 	my $st = debug_start($p,$query,(join ' ', caller)) if (defined($p->{dbdbf}));
 
 	unless($sth = $p->{$dbh}->prepare($query)) {
-		croak $p->{$dbh}->errstr."\n$query\n";
+		$p->error->throw;
 	}
 	unless($sth->execute(@values)) {
-		croak $p->{$dbh}->errstr."\n$query\n".(join ",", @values);
+		$p->error->throw;
 	}
 	$p->{queries}++;
 
 	debug_end($p,$st) if (defined($p->{dbdbf}));
 
 	if (defined($lastid)) {
-		my $keyvalue;
+		my ( $keyvalue, $sql );
 		if (ref($lastid)) {
-			croak $p->{$dbh}->errstr unless($$lastid = $p->{$dbh}->selectrow_array("SELECT LAST_INSERT_ID()"));
+            $sql = "SELECT LAST_INSERT_ID()";
+            unless ($$lastid = $p->{$dbh}->selectrow_array($sql)) {
+                $p->{last_query} .= "\n\n$sql";
+    			$p->error->throw;
+            }
 			$p->{queries}++;
 			return 1;
 		} else {
 			# postgres method of getting the last insert id (or any other column from the last insert)
-			my $oid = $sth->{'pg_oid_status'};
-			croak $p->{$dbh}->errstr unless($keyvalue = $p->{$dbh}->selectrow_array("SELECT $lastid FROM $table WHERE oid='$oid'"));
+            $sql = "SELECT $lastid FROM $table WHERE oid='".$sth->{pg_oid_status}."'";
+            unless($keyvalue = $p->{$dbh}->selectrow_array($sql)) {
+                $p->{last_query} .= "\n\n$sql";
+                $p->error->throw;
+            }
 			$p->{queries}++;
 			return $keyvalue;
 		}

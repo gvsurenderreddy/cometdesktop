@@ -187,7 +187,6 @@ sub load_user {
         WHERE m.email_address=?
         AND m.password=?
     |, [$user, $pass], $data );
-    return undef if ( $desktop->db->{error} );
             
     $desktop->db->doQuery('UPDATE qo_members SET last_access=NOW() WHERE id=?',[ $data->{id} ]);
 
@@ -207,10 +206,10 @@ sub load_session {
             ON m.id=mg.qo_members_id
             AND mg.active='true'
         WHERE s.id=?|, [$sid], $data );
-    return undef if ( $desktop->db->{error} );
 
     if ( $data->{id} ) {
         $data->{inactive} = 0;
+        # TODO add the load time
         if ( defined $ENV{HTTP_X_SESSION_DURATION} && $ENV{HTTP_X_SESSION_DURATION} =~ m/^\d+$/ ) {
             $desktop->db->doQuery(qq|
                 UPDATE qo_sessions
@@ -230,7 +229,6 @@ sub load_session {
             |,[$ENV{HTTP_USER_AGENT},$sid]);
         }
         $desktop->db->doQuery('UPDATE qo_members SET last_access=NOW() WHERE id=?',[ $data->{id} ]);
-        return undef if ( $desktop->db->{error} );
     }
 
     return ( $data->{id} ) ? $data : undef;
@@ -280,7 +278,7 @@ sub user_data {
             session_duration
             total_time
         )};
-        # TODO flag for group_admin
+        # TODO flag for is_group_admin
         $self->is_admin( defined $data->{groups_id} && $data->{groups_id} == 1 ? 1 : 0 );
         $self->is_guest( defined $data->{groups_id} && $data->{groups_id} == 3 ? 1 : 0 );
     }
