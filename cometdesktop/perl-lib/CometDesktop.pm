@@ -32,6 +32,7 @@ __PACKAGE__->mk_accessors(qw(
     extra_security
     main_conf
     ga_account
+    secure_login
 ));
 
 our $singleton;
@@ -96,6 +97,7 @@ sub new {
         ga_account => undef,
         version => $VERSION,
         revision => '',
+        secure_login => 0,
         @_
     });
    

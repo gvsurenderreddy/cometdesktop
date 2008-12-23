@@ -9,11 +9,6 @@ use CometDesktop qw(
     -Digest::SHA1[sha1_hex]
 );
 
-my %secure_domains = (
-    'cometdesktop.com' => 1,
-    'www.cometdesktop.com' => 1,
-);
-
 print "Pragma: nocache\n";
 print "Cache-Control: no-cache\n";
 print "Expires: 0\n";
@@ -44,7 +39,7 @@ if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
     }
 
 } else {
-    if ( !exists $ENV{HTTPS} && $secure_domains{$ENV{HTTP_HOST}} ) {
+    if ( !exists $ENV{HTTPS} && $desktop->secure_login ) {
         my $url = $ENV{SCRIPT_URI};
         if ( $url ) {
             $url =~ s/^http:/https:/;
