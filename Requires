@@ -10,3 +10,9 @@ DBI
 
 # ajax sql module
 DBD::Sqlite2
+
+# hulu module
+HTML::Entities
+WWW::Mechanize
+WWW::Mechanize::Chached
+Cache::FileCache
