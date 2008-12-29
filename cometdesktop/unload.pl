@@ -13,7 +13,6 @@ print "Expires: 0\n";
 print "Content-Type: text/plain\n\n";
 
 if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
-    eval {
     if ( $desktop->user->logged_in ) {
         my $data = $ENV{HTTP_X_SESSIONTIME};
         if ( defined $data ) {
@@ -28,7 +27,6 @@ if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
         }
         $desktop->user->inactivate_session();
     }
-    };
 }
 
 print "OK";
