@@ -54,7 +54,7 @@ function key() {
     }
 }
 
-if ( !desktopConfig.localmode ) {
+if ( !app.config.localmode ) {
     document.write('<'+'script src="http'+( Ext.isSecure ? "s" : "" )+'://www.google.com/jsapi?key='+key()+'">'+'<'+'/script>');
 }
 

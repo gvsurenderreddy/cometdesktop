@@ -11,8 +11,6 @@ Comet Desktop - TODO
     add onunload confirmation
     document events on the wiki
     add a cookbook to the wiki
-    add $desktop->tmp that points to a tmp dir
-      with conf var
 
 - system/login/*
     improve the look of the login page
@@ -32,9 +30,6 @@ Comet Desktop - TODO
 - *.js
     add more pubsub event usage across the board
 
-- *.pm, *.pl
-    improve error handling by using the Exception class
-
 - system/core/sound/*
     sometimes the sound system fails to load (flash), fix this
     the sound icon for the muted and unmuted state isn't different enough
@@ -51,7 +46,6 @@ Comet Desktop - TODO
       (this could be a good candidate for pluggable config options, aspect based perhaps?)
 
 - system/core/App.js
-    move utils and sprocket specific things out of this file
     phase out desktopConfig, in favor of app.config
 
 - system/core/*

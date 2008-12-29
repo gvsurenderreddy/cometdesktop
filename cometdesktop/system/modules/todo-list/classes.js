@@ -72,9 +72,9 @@ TaskStore = function(conn){
 
     this.proxy = new Ext.data.SqlDB.Proxy(conn, 'task', 'taskId', this);
 
-    if(window.google){ // google needs the table created
+//    if(window.google){ // google needs the table created
         this.proxy.on('beforeload', this.prepareTable, conn);
-    }
+//    }
 
     this.addEvents({newcategory: true});
 };

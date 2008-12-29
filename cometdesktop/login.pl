@@ -9,33 +9,35 @@ use CometDesktop qw(
     -Digest::SHA1[sha1_hex]
 );
 
-print "Pragma: nocache\n";
-print "Cache-Control: no-cache\n";
-print "Expires: 0\n";
+$desktop->header(
+    'Pragma: nocache',
+    'Cache-Control: no-cache',
+    'Expires: 0',
+);
 
 if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
-    print "Content-Type: text/javascript\n\n";
+    $desktop->content_type( 'text/javascript' );
 
     #if ( $desktop->user->logged_in ) {
-    #    print qq|{redirect:'logout.pl'}|;
+    #    $desktop->out(qq|{redirect:'logout.pl'}|);
     #    exit;
     #}
     
     my $ret = $desktop->user->login( $desktop->cgi_params('user','sha1','token') );
     
     unless ( $ret ) {
-        print qq|{errors:[{msg:'Not Allowed'}]}|;
+        $desktop->out(qq|{errors:[{msg:'Not Allowed'}]}|);
         exit;
     }
     
     if ( $ret == 1 ) {
-        print $desktop->encode_json({
+        $desktop->out($desktop->encode_json({
             success => 'true',
             sessionId => $desktop->user->session_id_tokenized,
             userName => $desktop->user->email_address,
             ( $ENV{HTTPS} ? ( nonSecure => 'true' ) : () ),
             days => 365,
-        });
+        }));
     }
 
 } else {
@@ -43,7 +45,8 @@ if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
         my $url = $ENV{SCRIPT_URI};
         if ( $url ) {
             $url =~ s/^http:/https:/;
-            print "Location: $url\n\n";
+            $desktop->header( "Location: $url" );
+            $desktop->out();
             exit;
         }
     }
@@ -58,8 +61,10 @@ if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
     document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
 </script>
 <script type="text/javascript">
-    var pageTracker = _gat._getTracker("\$ga_id");
-    pageTracker._trackPageview();
+    if ( window._gat ) {
+        var pageTracker = _gat._getTracker("\$ga_id");
+        pageTracker._trackPageview();
+    }
 </script>
 |;
     $ga = '<!-- disabled for localhost -->' if ( $ENV{REMOTE_ADDR} eq '127.0.0.1' );
@@ -69,13 +74,13 @@ if ( $ENV{REQUEST_METHOD} eq 'POST' ) {
     } else {
         $ga = '<!-- disabled, set ga_account in your config to enable -->';
     }
-    print "Content-Type: text/html\n\n";
+    $desktop->content_type( 'text/html' );
 # TODO proper doctype
-my $out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+$desktop->out(qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>\x{2604} Comet Desktop - Login</title>
+<title>&#x2604; Comet Desktop - Login</title>
 <meta http-equiv="generator" content="Comet Desktop" />
 <meta http-equiv="imagetoolbar" content="no" />
 <meta name="keywords" content="comet, desktop, web desktop, webos, web os, webtop, perl, javascript, sprocket, extjs, ext js, ajax, web socket, xantus" />
@@ -105,9 +110,7 @@ $ga
 
 <body scroll="no">
 </body>
-</html>|;
-    utf8::encode($out);
-    print $out;
+</html>|);
 }
 
 1;

@@ -69,9 +69,8 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
             text: 'Volume Control',
             tooltip: '<b>Volume Control</b><br />Adjust sound properties'
         };
-        app.soundManager = this;
+//        app.soundManager = this;
         app.onReady(this.onReady,this);
-        this.settings = Ext.state.Manager.get( 'volume-settings', this.settings );
         this.subscribe( '/desktop/sound/play', this.playSoundEvent, this );
         this.subscribe( '/desktop/sound/volume', this.setVolumeEvent, this );
     },
@@ -159,6 +158,7 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
         // XXX adjust this if sm2 fails to load
         // TODO add an init retry to sm2
         this.loadManager.defer( 1000, this );
+        this.settings = Ext.state.Manager.get( 'volume-settings', this.settings );
     },
 
     loadManager: function() {
@@ -172,11 +172,12 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
 
     onLoad: function() {
         this.publish( '/desktop/sound/manager/loaded', this.settings );
-        if ( this.settings.muted )
-            this.trayButton.setIconClass('sound-manager-mute-icon');
-        else
-            this.trayButton.setIconClass('sound-manager-icon');
-        
+        if ( this.trayButton ) {
+            if ( this.settings.muted )
+                this.trayButton.setIconClass('sound-manager-mute-icon');
+            else
+                this.trayButton.setIconClass('sound-manager-icon');
+        }        
         this.disabled = false;
         // if the volume window is open, remove the mask
         var win = app.desktop.getWindow('sound-manager-win');
@@ -187,7 +188,8 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
     onError: function() {
         this.publish( '/desktop/sound/manager/error', { message: 'Sound Manager 2 failed to load' } );
         log('flash sound manager failed to load');
-        this.trayButton.setIconClass('sound-manager-error-icon');
+        if ( this.trayButton )
+            this.trayButton.setIconClass('sound-manager-error-icon');
         this.disabled = true;
         var win = app.desktop.getWindow('sound-manager-win');
         if (win)
@@ -250,12 +252,14 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
             this.settings.muted = true;
             if ( this.currentId )
                 this.soundManager.mute( this.currentId );
-            this.trayButton.setIconClass('sound-manager-mute-icon');
+            if ( this.trayButton )
+                this.trayButton.setIconClass('sound-manager-mute-icon');
         } else {
             this.settings.muted = false;
             if ( this.currentId )
                 this.soundManager.unmute( this.currentId );
-            this.trayButton.setIconClass('sound-manager-icon');
+            if ( this.trayButton )
+                his.trayButton.setIconClass('sound-manager-icon');
         }
         this.saveSettings();
     },
@@ -299,5 +303,5 @@ Ext.app.SoundManager = Ext.extend(Ext.app.Module, {
 
 });
 
-app.startupModules.push('Ext.app.SoundManager');
+app.register('Ext.app.SoundManager');
 

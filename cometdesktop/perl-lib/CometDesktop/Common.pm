@@ -18,6 +18,8 @@ sub import {
 
     my @exports = qw(
         slurp
+        true
+        false
     );
 
     push( @exports, @_ ) if ( @_ );
@@ -32,6 +34,14 @@ sub slurp {
     local $/;
     open(FH, $_[0]) or return '';
     <FH>;
+}
+
+sub true() {
+    return 'true';
+}
+
+sub false() {
+    return 'false';
 }
 
 1;

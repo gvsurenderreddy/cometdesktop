@@ -14,11 +14,15 @@ sub request {
     my ( $self, $task, $what ) = @_;
 
     if ( $desktop->user->logged_in && $task && $self->can( 'cmd_'.$task ) ) {
+        $desktop->content_type( 'text/xml' );
+        
         my $cmd = 'cmd_'.$task;
-        return $self->$cmd( $what );
+        return $desktop->out( '<?xml version="1.0"?>' ) unless ( $self->$cmd( $what ) );
+
+        return;
     }
 
-    return 1;
+    $desktop->error( 'no such task' )->throw;
 }
 
 sub new {
@@ -66,10 +70,7 @@ sub cmd_fetch {
 	$xml =~ s/<\/dc:creator>/<\/author>/g;
 	$xml =~ s/<dc:creator/<author/g;
 
-#    utf8::encode($xml) if ( $xml =~ m/utf-8/ );
-    utf8::encode($xml);
-
-    print $xml;
+    $desktop->out( $xml );
     return 1;
 }
 

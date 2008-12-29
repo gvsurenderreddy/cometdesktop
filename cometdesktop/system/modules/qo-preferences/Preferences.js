@@ -174,7 +174,6 @@ QoDesk.QoPreferences = Ext.extend(Ext.app.Module, {
 		var callbackScope = params.callbackScope || this;
 		
 		params.moduleId = this.moduleId;
-		params.fileName = 'preferences.pl';
 		
 	    Ext.Ajax.request({
 			url: app.connection,
@@ -229,6 +228,16 @@ QoDesk.QoPreferences.NavPanel = function(config){
 		border: false,
 		html: '<ul id="pref-nav-panel"> \
 				<li> \
+					<img src="'+Ext.BLANK_IMAGE_URL+'" class="icon-pref-appearance"/> \
+					<a id="viewAppearance" href="#">Themes</a><br /> \
+					<span>Change the desktop theme.</span> \
+				</li> \
+				<li> \
+					<img src="'+Ext.BLANK_IMAGE_URL+'" class="icon-pref-wallpaper"/> \
+					<a id="viewWallpapers" href="#">Desktop Background</a><br /> \
+					<span>Change the wallpaper and font colors.</span> \
+				</li> \
+				<li> \
 					<img src="'+Ext.BLANK_IMAGE_URL+'" class="icon-pref-shortcut"/> \
 					<a id="viewShortcuts" href="#">Shortcuts</a><br /> \
 					<span>Choose which applications appear on the desktop.</span> \
@@ -242,16 +251,6 @@ QoDesk.QoPreferences.NavPanel = function(config){
 					<img src="'+Ext.BLANK_IMAGE_URL+'" class="icon-pref-quickstart"/> \
 					<a id="viewQuickstart" href="#">Quick Start Apps</a><br /> \
 					<span>Choose which applications appear in your Quick Start panel.</span> \
-				</li> \
-				<li> \
-					<img src="'+Ext.BLANK_IMAGE_URL+'" class="icon-pref-appearance"/> \
-					<a id="viewAppearance" href="#">Themes</a><br /> \
-					<span>Change the desktop theme.</span> \
-				</li> \
-				<li> \
-					<img src="'+Ext.BLANK_IMAGE_URL+'" class="icon-pref-wallpaper"/> \
-					<a id="viewWallpapers" href="#">Desktop Background</a><br /> \
-					<span>Change the wallpaper and font colors.</span> \
 				</li> \
 			</ul>',
 		id: config.id
@@ -640,7 +639,6 @@ QoDesk.QoPreferences.Appearance = function(config){
 	var store = new Ext.data.JsonStore({
 		baseParams: {
 			moduleId: this.owner.moduleId,
-			fileName: 'preferences.pl',
 			task: 'load',
 			what: 'themes'
 		},
@@ -820,7 +818,6 @@ QoDesk.QoPreferences.Background = function(config){
 	var store = new Ext.data.JsonStore({
 		baseParams: {
 			moduleId: this.owner.moduleId,
-			fileName: 'preferences.pl',
 			task: 'load',
 			what: 'wallpapers'
 		},

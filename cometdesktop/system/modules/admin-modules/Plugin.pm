@@ -18,15 +18,18 @@ $desktop->register_plugin( 'admin-modules' => 'AdminModules' );
 
 sub request {
     my ( $self, $task, $what ) = @_;
+     
+    $desktop->content_type( 'text/javascript' );
 
-    return 0 unless ( $desktop->user->is_admin );
+    return $desktop->out({ success => 'false' }) unless ( $desktop->user->is_admin );
 
     if ( $desktop->user->logged_in && $task && $self->can( 'cmd_'.$task ) ) {
         my $cmd = 'cmd_'.$task;
-        return $self->$cmd( $what );
+        return $desktop->out({ success => 'false' }) unless ( $self->$cmd( $what ) );
+        return;
     }
 
-    return 0;
+    $desktop->error( 'no such task' )->throw;
 }
 
 sub new {
@@ -65,21 +68,14 @@ sub cmd_fetch {
 
     foreach ( @t ) {
         $_->{files} = $f->{ $_->{id} } || [];
-    }
-
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        return 0;
-    }
-
-    foreach ( @t ) {
         $_->{active} = $_->{active} eq 'true' ? 'on' : 'off';
     }
 
-    print $desktop->encode_json({
+    $desktop->out({
         success => 'true',
         modules => \@t,
     });
+    return 1;
 }
 
 
@@ -130,13 +126,6 @@ sub cmd_save {
     } else {
         # new module, insert it
         $desktop->db->insertWithHash('qo_modules',$data,\$id);
-        if ( $id ) {
-            warn "new module: $id";
-        }
-    }
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        return 0;
     }
 
     if ( $data->{files} && ref( $data->{files} ) eq 'ARRAY' ) {
@@ -147,28 +136,20 @@ sub cmd_save {
             WHERE
                 qo_modules_id=?
         |,[$id]);
-        if ( $desktop->db->{error} ) {
-            warn $desktop->db->{error};
-            return 0;
-        }
 
         foreach ( @{ $data->{files} } ) {
             $_->{qo_modules_id} = $id;
             delete $_->{id};
             $desktop->db->insertWithHash('qo_modules_has_files',$_);
-            last if ( $desktop->db->{error} );
         }
 
-        if ( $desktop->db->{error} ) {
-            warn $desktop->db->{error};
-            return 0;
-        }
     }
 
-    print $desktop->encode_json({
+    $desktop->out({
         success => 'true',
         id => $id,
     });
+    return 1;
 }
 
 sub cmd_delete {
@@ -186,10 +167,6 @@ sub cmd_delete {
         WHERE
             id=?
     |,[$id]);
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        return 0;
-    }
     $desktop->db->doQuery(qq|
         DELETE
         FROM
@@ -198,8 +175,7 @@ sub cmd_delete {
             qo_modules_id=?
     |,[$id]);
 
-    print $desktop->encode_json({
-        success => 'true'
-    });
+    $desktop->out({ success => 'true' });
+    return 1;
 }
 1;

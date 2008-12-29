@@ -50,7 +50,7 @@ QoDesk = new Ext.app.App({
 		return {
 			text: 'Logout',
 			iconCls: 'logout',
-			handler: function() { window.location = "logout.pl"; },
+			handler: function() { window.location = app.config.logoutUrl || "logout.pl"; },
 			scope: this
 		};
 	},
@@ -60,22 +60,23 @@ QoDesk = new Ext.app.App({
         if ( this.modules && this.modules.length )
             return this.modules;
         var modules = [];
-		for(var i = 0, len = this.apps.length; i < len; i++)
-            modules.push( new Ext.app.loadOnDemand( this.apps[ i ] ) );
 
-        for ( var i = 0, len = desktopConfig.modules.length; i < len; i++ ) {
-            var construct = eval("("+desktopConfig.modules[i]+")");
-            if ( construct )
-                modules.push( new construct() );
-            else
-                log('module: '+desktopConfig.modules[i]+' is not loaded, or onDemand');
+		for(var i = 0, len = this.apps.length; i < len; i++) {
+            if ( typeof this.apps[ i ] == 'string' ) {
+                var construct = eval("("+this.apps[ i ]+")");
+                if ( construct )
+                    modules.push( new construct() );
+            } else {
+                modules.push( new Ext.app.loadOnDemand( this.apps[ i ] ) );
+            }
         }
-        for ( var i = 0, len = app.startupModules.length; i < len; i++ ) {
-            var construct = eval("("+app.startupModules[i]+")");
+
+        for ( var i = 0, len = app.config.modules.length; i < len; i++ ) {
+            var construct = eval("("+app.config.modules[i]+")");
             if ( construct )
                 modules.push( new construct() );
             else
-                log('module: '+app.startupModules[i]+' is not loaded, or onDemand');
+                log('module: '+app.config.modules[i]+' is not loaded, or onDemand');
         }
 		return this.modules = modules;
 	},
@@ -84,14 +85,14 @@ QoDesk = new Ext.app.App({
     getStartConfig : function() {
     	return {
         	iconCls: 'startmenu-user-icon',
-			title: desktopConfig.user.first+' '+desktopConfig.user.last+' \u2604 Comet Desktop',
+            title: '<span style="float:right">Comet Desktop &#x2604;</span> '+app.config.user.first+' '+app.config.user.last,
 			toolPanelWidth: 115
         };
     },
     
     // config for the desktop
     getDesktopConfig : function() {
-	    this.initDesktopConfig(window.desktopConfig);
+	    this.initDesktopConfig(app.config);
 		
     	/* can also call server for saved config
     	 *

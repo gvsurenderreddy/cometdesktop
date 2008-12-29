@@ -35,6 +35,7 @@ __PACKAGE__->mk_accessors(qw(
     secure_login
     content_type
     sent_header
+    tempdir
 ));
 
 our $singleton;
@@ -95,13 +96,16 @@ sub new {
         pwd => $pwd,
         localmode => 0,
         extra_security => 0,
-        main_conf => $pwd.'main.conf',
+        main_conf => 'main.conf',
         ga_account => undef,
         version => $VERSION,
         revision => '',
         secure_login => 0,
         header => [],
         content_type => undef,
+        tempdir => 'tmp/',
+        use_exceptions => 1,
+        config_files => {},
         @_
     });
    
@@ -115,8 +119,13 @@ sub new {
 
     require CometDesktop::Common;
     import CometDesktop::Common;
+
+    my $tmp = $self->tempdir;
+    $tmp .= '/' unless ( $tmp =~ m/\/$/ );
+    $tmp = $self->pwd.$tmp if ( $tmp !~ m/^\// );
+    $self->tempdir( $tmp );
    
-    $self->get_svn_revision() if ( $self->{use_svn_revision} );
+    $self->get_svn_revision if ( $self->{use_svn_revision} );
 
     $self->version( $VERSION.$self->revision );
     
@@ -136,11 +145,22 @@ sub out {
     unless ( $self->sent_header ) {
         print $self->header;
         my $type = $self->content_type;
-        print "Content-Type: $type\n" if ( defined $type );
+        print "Content-Type: $type; charset=utf-8\n" if ( defined $type );
         print "\n\n";
         $self->sent_header( 1 );
     }
-    print join( "\n", @out ) if ( @out );
+    if ( @out ) {
+        my $out = '';
+        foreach ( @out ) {
+            if ( ref $_ ) {
+                $out .= $self->encode_json( $_ )."\n";
+            } else {
+                $out .= "$_\n";
+            }
+        }
+        utf8::encode( $out );
+        print $out;
+    }
 
     return;
 }
@@ -165,7 +185,7 @@ sub db {
     my $self = shift;
     unless ( $self->{db} ) {
         require CometDesktop::DB;
-        $self->error( "db_dsn not defined, set this in your config file\n" )->throw unless ( $self->{db_dsn} );
+        $self->error( "db_dsn not defined, set this in your config file" )->throw unless ( $self->{db_dsn} );
         $self->{db} = CometDesktop::DB->new(
             $self->{db_dsn},
             $self->{db_user} || '',
@@ -576,7 +596,7 @@ sub javascript_include {
             }
         }
         if ( $h->{stat}->[2] ) {
-            my $src =  slurp( $path.$h->{path}.$h->{name} );
+            my $src = slurp( $path.$h->{path}.$h->{name} );
             if ( $self->user->is_admin ) {
                 $self->out( "/* $h->{path}$h->{name} ($h->{stat}->[0] bytes) */", $src );
             } else {
@@ -679,27 +699,29 @@ sub get_config {
     my $user = $self->user;
 #    require Socket;
     return {
-        launchers => $launchers,
-        styles => $styles,
-        modules => $self->get_modules,
-        registry => $self->get_registry,
-        user => {
-            id => $user->user_id,
-            email => $user->email_address,
-            isAdmin => $user->is_admin,
-            isGuest => $user->is_guest,
-            group => $user->group_id,
-            first => $user->first_name || '',
-            last => $user->last_name || '',
-            totalDuration => $user->total_duration,
-            lastSessionDuration => $user->session_duration,
+        config => {
+            launchers => $launchers,
+            styles => $styles,
+            modules => $self->get_modules,
+            registry => $self->get_registry,
+            user => {
+                id => $user->user_id,
+                email => $user->email_address,
+                isAdmin => $user->is_admin,
+                isGuest => $user->is_guest,
+                group => $user->group_id,
+                first => $user->first_name || '',
+                last => $user->last_name || '',
+                totalDuration => $user->total_duration,
+                lastSessionDuration => $user->session_duration,
+            },
+            ip => $ENV{REMOTE_ADDR},
+            sessionId => $user->session_id,
+            localmode => $self->localmode,
+#            dip => unpack( 'N', inet_aton( $ENV{REMOTE_ADDR} ) ), # decimal ip
+#            env => ( $self->user->is_admin ? \%ENV : {} ),
         },
-        ip => $ENV{REMOTE_ADDR},
-#        dip => unpack( 'N', inet_aton( $ENV{REMOTE_ADDR} ) ), # decimal ip
-        sessionId => $user->session_id,
-        localmode => $self->localmode,
         version => $self->version,
-#        env => ( $self->user->is_admin ? \%ENV : {} ),
     };
 }
 
@@ -744,8 +766,6 @@ sub get_styles {
             INNER JOIN qo_wallpapers AS W ON W.id = S.qo_wallpapers_id
     WHERE
         qo_members_id=? AND qo_groups_id=?|,[@_],$h);
-    # TODO util function to do this
-    $h->{transparency} = ( defined $h->{transparency} && $h->{transparency} eq 'true' ) ? $self->json_true : $self->json_false;
     return $h;
 }
 
@@ -865,29 +885,28 @@ sub json_false {
 }
 
 sub decode_json {
-    shift;
+    my $self = shift;
     require JSON::Any;
     import JSON::Any;
     my $r = eval { JSON::Any->jsonToObj(@_); };
-    if ( $@ ) {
-        warn 'Error while decoding json from line: '.(caller())[2].' : '.$@;
-    }
+    $self->error( 'Error while decoding json: '.$@ )->throw if ( $@ );
     return $r;
 }
 
 sub encode_json {
-    shift;
+    my $self = shift;
     require JSON::Any;
     import JSON::Any;
     my $r = eval { JSON::Any->objToJson(@_) };
-    if ( $@ ) {
-        warn 'Error while encoding json from line: '.(caller())[2].' : '.$@;
-    }
+    $self->error( 'Error while encoding json: '.$@ )->throw if ( $@ );
+    # convert true/false
+    $r =~ s/:\s?"(true|false)"/:$1/g;
     return $r;
 }
 
 sub js_compress {
     my ( $self, $js ) = @_;
+    $js =~ s!/\*.*\*/!!xsmg;
     require JavaScript::Minifier;
     return JavaScript::Minifier::minify(
         input => $js,
@@ -904,32 +923,55 @@ sub _merge {
 }
 
 sub error {
+    my $self = shift;
     return CometDesktop::Exception->new(
-        error => $_[1],
+        error => shift,
+        throw_die => !$self->{use_exceptions},
         @_
     );
 }
 
 sub load_config {
-    my ( $self, $file ) = @_;
+    my ( $self, $loadfile, $o ) = @_;
+    unless ( defined $o ) {
+        # pinpoints a line in code if called from within a library
+        $o = {}; @{$o}{qw( file line cmd )} = ( (caller(1))[1,2], 'load_config' );
+    }
 
-    open (my $fh, $file) or return $self->error( "error opening config file [$file]: $!" );
+    # recursive config file load detection
+    if ( my $src = $self->{config_files}->{$loadfile} ) {
+        my $error = "You have a looping load_config in $o->{file}, line:$o->{line}"
+            ." ($loadfile was loaded previously in $src->{file} line:$src->{line})";
+        return $self->error( $error, dump_var => $self->{config_files} );
+    }
 
-    my $line = 0;
-    while (<$fh>) {
-        $line++;
+    # take the file we are loading, and save where it was loaded from
+    $self->{config_files}->{$loadfile} = { map { $_ => "$o->{$_}" } keys %$o };
+
+    open (my $fh, $loadfile) or return $self->error( "error opening config file [$loadfile]: $!" );
+
+    my $lines = 0;
+    while (my $confline = <$fh>) {
+        $lines++;
         # we only care about errors here
-        my $err = $self->config_command( $_, $line );
+        # config txt, line it is on, file, line file was loaded on, previous file, previous line
+#        $o->{line} = $lines;
+#        $o->{cmd} = $confline;
+#        $o->{file} = $loadfile;
+        my $err = $self->config_command( $confline, $loadfile, $lines, $o );
         return $err if ( $err && UNIVERSAL::isa( $err, 'CometDesktop::Exception' ) );
     }
+    $self->{config_files}->{$loadfile}->{lines} = $lines;
 
     close($fh);
     return;
 }
 
 sub config_command {
-    my ( $self, $cmd, $line ) = @_;
+    my ( $self, $cmd, $file, $line, $o ) = @_;
+    # config txt, line it is on, file, line file was loaded on, previous file, previous line
 
+    # skip empty lines and comments
     foreach ( qr/^\s+/, qr/#.*/, qr/\s+$/ ) {
         $cmd =~ s/$_//;
     }
@@ -938,24 +980,27 @@ sub config_command {
     $cmd =~ s/^([^=]+)/lc($1)/e;
     return unless $cmd =~ /^\S/; # blank
     
-    # ENV vars
+    # use ENV vars
     $cmd =~ s/\$(\w+)/$ENV{$1}/g;
 
-    return $self->error( "syntax error on line $line" ) unless ( $cmd =~ /^(\w+)/ );
+    return $self->error( "syntax error (file:$file, line:$line)" ) unless ( $cmd =~ /^(\w+)/ );
     
     $cmd = $1;
     my $h = UNIVERSAL::can( $self, "cmd_$cmd" );
-    return $self->error( "command not found $cmd" ) unless ( $h );
+    return $self->error( "command not found $cmd (file:$file, line:$line)" ) unless ( $h );
     
-    return $h->( $self, $orig );
+    $o->{cmd} = $orig;
+    $o->{file} = $file;
+    $o->{line} = $line;
+    return $h->( $self, $o );
 }
 
 # set foo = bar
 # set foo.bar = baz
 sub cmd_set {
-    my ( $self, $cmd ) = @_;
+    my ( $self, $o ) = @_;
     
-    my @set = grep { defined } ( $cmd =~ /^set (?:(\w+)[ \.])?([\w\.]+) ?= ?(.+)$/i );
+    my @set = grep { defined } ( $o->{cmd} =~ /^set (?:(\w+)[ \.])?([\w\.]+) ?= ?(.+)$/i );
     $self->{ $set[0] } = $set[1] if ( @set == 2 );
     $self->{ $set[0] }->{ $set[1] } = $set[2] if ( @set == 3 );
     
@@ -964,28 +1009,29 @@ sub cmd_set {
 
 # include lib
 sub cmd_include {
-    my ( $self, $cmd ) = @_;
+    my ( $self, $o ) = @_;
     
-    my @set = ( $cmd =~ /^include (.+)$/i );
+    my @set = ( $o->{cmd} =~ /^include (.+)$/i );
     unshift( @INC, split( /\s+/, $set[0] ) );
     
     return;
 }
 
 sub cmd_load_config {
-    my ( $self, $cmd ) = @_;
+    my ( $self, $o ) = @_;
+    # config txt, line it is on, file, line file was loaded on, previous file, previous line
 
-    my @set = ( $cmd =~ /^load_config (if exists )?(.+)$/i );
-    return $self->load_config( $set[0] ) if ( $#set == 0 );
-    return $self->load_config( $set[1] ) if ( $#set == 1 && -e $set[1] );
+    my @set = ( $o->{cmd} =~ /^load_config (if exists )?(.+)$/i );
+    return $self->load_config( $set[0], $o ) if ( $#set == 0 );
+    return $self->load_config( $set[1], $o ) if ( $#set == 1 && -e $set[1] );
     
-    return;
+    return $self->error( "bad load_config command (file:$o->{file}, line:$o->{line}" );
 }
 
 sub set_env {
-    my ( $self, $cmd ) = @_;
+    my ( $self, $o ) = @_;
 
-    my @set = grep { defined } ( $cmd =~ /^set_env ([\w\.]+) ?= ?(.+)$/i );
+    my @set = grep { defined } ( $o->{cmd} =~ /^set_env ([\w\.]+) ?= ?(.+)$/i );
     $ENV{ $set[0] } = $set[1];
     
     return;

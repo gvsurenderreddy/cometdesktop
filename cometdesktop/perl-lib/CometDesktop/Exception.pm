@@ -26,9 +26,9 @@ sub new {
             wantarray
             evaltext
             is_require
-            hints
-            bitmask
         )],
+#            hints
+#            bitmask
         caller => {},
         @_
     }, ref $class || $class );
@@ -41,18 +41,36 @@ sub new {
     return $self;
 }
 
-*throw = *plain_throw;
+sub throw {
+    my $self = shift;
+    if ( $self->{throw_die} ) {
+        my $error = "\nError ".( $self->{error} || 'unknown' ).' ';
+#        foreach ( @{$self->{caller_report}} ) {
+#            next unless defined;
+#            $error .= "$_: ".( $self->{caller}->{$_} || 'NULL' ).", ";
+#        }
+        die "$error\n";
+    } else {
+        return $self->html_throw;
+    }
+}
 
-sub plain_throw {
+sub html_throw {
     my $self = shift;
     use bytes;
     my $desktop = $CometDesktop::singleton;
-    $desktop->content_type( 'text/plain' );
-    my $content = "\nError ".( $self->{error} || 'unknown' )."\n\n";
+    $desktop->content_type( 'text/html' );
+    my $content = '<html><head><title>Comet Desktop - Error 500</title></head>'
+        .'<body><h3>Error 500</h3><pre>'.( $self->{error} || 'unknown' )."\n\n";
     foreach ( @{$self->{caller_report}} ) {
         next unless defined;
         $content .= "$_: ".( $self->{caller}->{$_} || 'NULL' )."\n";
     }
+    if ( $self->{dump_var} ) {
+        require Data::Dumper;
+        $content .= Data::Dumper->Dump([$self->{dump_var}]);
+    }
+    $content .= "</pre></frameset></body></html>";
     $desktop->header(
         "Status: 500",
 #        'Content-Length: '.length($content)

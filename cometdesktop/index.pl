@@ -7,9 +7,11 @@ use lib $ENV{COMETDESKTOP_ROOT} ? $ENV{COMETDESKTOP_ROOT}.'/perl-lib' : 'perl-li
 
 use CometDesktop;
 
-print "Pragma: nocache\n";
-print "Cache-Control: no-cache\n";
-print "Expires: 0\n";
+$desktop->header(
+    'Pragma: nocache',
+    'Cache-Control: no-cache',
+    'Expires: 0',
+);
 
 my $out;
 
@@ -40,15 +42,14 @@ if ( my $act = $desktop->ga_account ) {
 }
 
 unless( $desktop->user->logged_in ) {
-#    print "Location: login.pl\n\n";
-    print "Content-Type: text/html\n\n";
+    $desktop->content_type( 'text/html' );
     # TODO proper doctype
     # XXX is the shortcut icon the correct size or can it be larger?
-$out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+$desktop->out(qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<title>\x{2604} Comet Desktop - Web Desktop - JavaScript Desktop - Extjs WebOS [ v$v ]</title>
+<title>&#x2604; Comet Desktop - Web Desktop - JavaScript Desktop - Extjs WebOS [ v$v ]</title>
 <meta http-equiv="generator" content="Comet Desktop" />
 <meta name="keywords" content="comet, desktop, web desktop, webos, web os, webtop, perl, javascript, sprocket, extjs, ext js, ajax, web socket, xantus" />
 <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
@@ -77,9 +78,7 @@ $out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/T
         window.onload = function() { window.location.href = 'login.pl'; };
     </script>
 </body>
-</html>|;
-    utf8::encode($out);
-    print $out;
+</html>|);
     exit;
 }
 
@@ -104,13 +103,13 @@ my $extjs = ( $https || $desktop->localmode ) ? qq|
 <script type="text/javascript" src="http://extjs.cachefly.net/ext-2.2/ext-all.js"></script>
 |;
 
-print "Content-Type: text/html\n\n";
+$desktop->content_type( 'text/html' );
 
-$out = qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+$desktop->out(qq|<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<title>\x{2604} Comet Desktop - [ v$v ]</title>
+<title>&#x2604; Comet Desktop - [ v$v ]</title>
 <meta http-equiv="generator" content="Comet Desktop" />
 <meta http-equiv="imagetoolbar" content="no" />
 <meta name="keywords" content="comet, desktop, web desktop, webos, web os, webtop, perl, javascript, sprocket, extjs, ext js, ajax, web socket, xantus" />
@@ -187,13 +186,12 @@ $debug
     } else {
         window.log = Ext.emptyFn;
     }
-    var desktopConfig = $config;
-    desktopConfig.initTime = new Date();
+    Ext.namespace('app');
+    app = $config;
+    app.initTime = new Date();
 </script>
 <script type="text/javascript" src="javascript.pl?v=$v&amp;h=$hash"></script>
 $ga
 </body>
-</html>|;
+</html>|);
 
-utf8::encode($out);
-print $out;

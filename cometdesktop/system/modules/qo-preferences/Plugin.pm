@@ -20,11 +20,13 @@ sub request {
     my ( $self, $task, $what ) = @_;
 
     if ( $desktop->user->logged_in && $task && $self->can( 'cmd_'.$task ) ) {
+        $desktop->content_type( 'text/javascript' );
         my $cmd = 'cmd_'.$task;
-        return $self->$cmd( $what );
+        $desktop->out({ success => 'false' }) unless( $self->$cmd( $what ) );
+        return;
     }
 
-    return 0;
+    $desktop->error( 'no such task' )->throw;
 }
 
 sub new {
@@ -51,11 +53,8 @@ sub cmd_load {
         qo_$what
     ORDER by id
     |);
-    return if ( $desktop->db->{error} );
 
-    print $desktop->encode_json({
-        images => \@t
-    });
+    $desktop->out({ images => \@t });
     return 1;
 }
 
@@ -106,7 +105,8 @@ sub cmd_save {
         return;
     }
 
-    print qq|{'success': true}|;
+    $desktop->out({ success => 'true' });
+    return 1;
 }
 
 1;

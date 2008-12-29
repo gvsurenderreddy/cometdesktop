@@ -3,6 +3,8 @@
 use strict;
 use warnings;
 
+# Note that we don't use CometDesktop here
+
 my $qs = $ENV{QUERY_STRING};
 my $error = 'Unknown';
 
@@ -26,10 +28,10 @@ my $out = qq|<!DOCTYPE>
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>\x{2604} $error</title>
+    <title>&#x2604; $error</title>
 </head>
 <body>
-<h3>\x{2604} Comet Desktop: Error $error</h3>
+<h3>&#x2604; Comet Desktop: Error $error</h3>
 </body>
 </html>
 |;

@@ -120,7 +120,7 @@ QoDesk.ToDoList = Ext.extend(Ext.app.Module, {
                     '<td><div class="x-small-editor" id="new-task-cat"></div></td>',
                     '<td><div class="x-small-editor" id="new-task-due"></div></td>',
                 '</tr></tbody>',
-                "</table>"
+                '</table>'
             );
         
             var selections = new Ext.grid.RowSelectionModel();
@@ -354,9 +354,9 @@ QoDesk.ToDoList = Ext.extend(Ext.app.Module, {
         
             var ntDue = new Ext.form.DateField({
                 renderTo: 'new-task-due',
-                value: new Date(),
+                value: (new Date()),
                 disabled:true,
-                format : "m/d/Y"
+                format: "m/d/Y"
             });
         
             syncFields();
@@ -540,3 +540,4 @@ function textDate(){
 }
 
 })();
+

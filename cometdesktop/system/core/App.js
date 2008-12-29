@@ -47,52 +47,41 @@
 
 Ext.BLANK_IMAGE_URL = 'resources/images/default/s.gif';
 
-Ext.app.config = {
-
-    connection: 'connect.pl',
-    startupModules: [],
-    apps: [],
-    poweredby: [ 'Ext/'+Ext.version ],
-    browserOS: __getBrowserOS()
-
-};
 
 // replaced when the app is initialized
-window.app = {
+Ext.apply( window.app, {
+    
+    connection: 'connect.pl',
+    apps: [],
+    poweredby: [ 'Ext/'+Ext.version ],
+    browserOS: __getBrowserOS(),
 
     register: function( cfg ) {
-        Ext.app.config.apps.push( cfg );
+        app.apps.push( cfg );
     },
 
     addAppVersion: function( appVersion ) {
         if ( appVersion !== undefined )
-            Ext.app.config.poweredby.push( appVersion );
+            app.poweredby.push( appVersion );
   
         if ( !Ext.Ajax.defaultHeaders )
             Ext.Ajax.defaultHeaders = {};
 
-        Ext.Ajax.defaultHeaders['X-Powered-By'] = Ext.app.config.poweredby.join( '; ' );
+        Ext.Ajax.defaultHeaders['X-Powered-By'] = app.poweredby.join( '; ' );
     }
 
-};
+});
 
-app.addAppVersion( 'CometDesktop/'+desktopConfig.version );
+app.addAppVersion( 'CometDesktop/'+app.version );
 
 Ext.app.App = function(cfg) {
-    Ext.apply(this, Ext.app.config);
     Ext.apply(this, cfg);
-
-    // XXX
-    Ext.apply(this, { config: desktopConfig });
-
-    // used to calculate how long it took to load the desktop
-    this.initTime = desktopConfig.initTime;
+    Ext.apply(this, app);
 
     this.addEvents({
         'ready': true,
         'beforeunload': true
     });
-
     window.app = this;
 
     Ext.onReady(this.initApp, this);
@@ -102,9 +91,9 @@ Ext.app.App = function(cfg) {
 Ext.extend(Ext.app.App, Ext.util.Observable, {
     isReady : false,
     modules : [],
-    connection : '',
     
     initApp : function() {
+        // used to calculate how long it took to load the desktop
         this.startTime = new Date();
         this.loadTime = ( parseInt( this.startTime.dateFormat('U') ) - parseInt( this.initTime.dateFormat('U') ) );
         log( 'load time:'+this.loadTime+' seconds' );
@@ -196,7 +185,7 @@ Ext.extend(Ext.app.App, Ext.util.Observable, {
         x.conn.setRequestHeader( 'X-SessionTime', this.startTime.dateFormat('c/U') + '~' + ( new Date ).dateFormat('c/U') );
         x.conn.setRequestHeader( 'X-LoadTime', this.loadTime );
         x.conn.onreadystatechange = Ext.emptyFn;
-        x.conn.send( 'v'+desktopConfig.version  );
+        x.conn.send( 'v'+this.config.version  );
         document.title = originalTitle;
     },
 
@@ -390,12 +379,6 @@ Ext.extend(Ext.app.App, Ext.util.Observable, {
         return this.desktop;
     },
 
-    log: function(msg) {
-        if ( window.log )
-            window.log(msg);
-        return true;
-    },
-
     gaSetVar: function(v) {
         if ( window.pageTracker )
             window.pageTracker._setVar(v);
@@ -408,29 +391,10 @@ Ext.extend(Ext.app.App, Ext.util.Observable, {
             log('ga pagetrack: '+id);
         }
         return true;
-    },
-    
-    // use for major apps only ... don't clutter the header
-    addAppVersion: function( appVersion ) {
-        if ( appVersion !== undefined )
-            this.poweredby.push( appVersion );
-        
-        Ext.Ajax.defaultHeaders['X-Powered-By'] = this.poweredby.join( '; ' );
-    },
-
-    register: function( cfg ) {
-        this.apps.push( cfg );
     }
 
 });
 
-
-// patch ext-2.2
-if ( Ext.isChrome === undefined ) {
-    Ext.apply( Ext, {
-        isChrome: Ext.isSafari3 && navigator.userAgent.toLowerCase().indexOf('chrome') != -1
-    });
-}
 
 // a panel that is flash friendly
 // this fixes the panel so it doesn't refresh when show() is called in firefox
@@ -646,6 +610,13 @@ Ext.extend(Ext.DataView.LabelEditor, Ext.Editor, {
     }
 });
 */
+
+// patch ext-2.2
+if ( Ext.isChrome === undefined ) {
+    Ext.apply( Ext, {
+        isChrome: Ext.isSafari3 && navigator.userAgent.toLowerCase().indexOf('chrome') != -1
+    });
+}
 
 function __getBrowserOS() {
     var os = '-unknown';

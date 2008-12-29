@@ -20,11 +20,13 @@ sub request {
     my ( $self, $task, $dbname ) = @_;
 
     if ( $desktop->user->logged_in && $task && $self->can( 'cmd_'.$task ) ) {
+        $desktop->content_type( 'text/javascript' );
         my $cmd = 'cmd_'.$task;
-        return $self->$cmd( $dbname );
+        $self->$cmd( $dbname );
+        return;
     }
 
-    return 0;
+    $desktop->error( 'no such task' )->throw;
 }
 
 sub new {
@@ -43,7 +45,7 @@ sub db {
 #    warn "opening db: $dbname";
 
     $self->{db} = CometDesktop::DB->new(
-        'SQLite2:dbname='.$desktop->pwd.'tmp/user-'.$desktop->user->user_id.'-'.$dbname.'.sqlite2',
+        'SQLite2:dbname='.$desktop->tempdir.'user-'.$desktop->user->user_id.'-'.$dbname.'.sqlite2',
         '',
         ''
     );
@@ -55,11 +57,11 @@ sub cmd_query {
     my ( $self, $dbname ) = @_;
 
     my ( $sql, $args ) = $desktop->cgi_params( 'sql', 'args' );
-    return 0 unless ( $sql && $dbname );
+    $desktop->error( 'bad params' ) unless ( $sql && $dbname );
     
     if ( defined $args ) {
         $args = $desktop->decode_json( $args );
-        return 0 unless ( ref $args eq 'ARRAY' );
+        $desktop->error( 'bad args' )->throw unless ( ref $args eq 'ARRAY' );
 #        warn "sqlite query $sql bind:".join(',',@$args);
     } else {
 #        warn "sqlite query $sql";
@@ -68,21 +70,24 @@ sub cmd_query {
     my $db = $self->db( $dbname );
 
     my @t;
-    if ( $args ) {
-        $db->arrayHashQuery( $sql, $args, \@t );
-    } else {
-        @t = $db->arrayHashQuery( $sql );
-    }
-    print $desktop->encode_json({
-        error => $db->{error},
-    }), return 1 if ( $db->{error} );
+    eval {
+        # this forces the db to use die, so we can trap it
+        $db->no_exceptions;
+        if ( $args ) {
+            $db->arrayHashQuery( $sql, $args, \@t );
+        } else {
+            @t = $db->arrayHashQuery( $sql );
+        }
+        $db->use_exceptions;
+    };
+    return $desktop->out({
+        error => $@,
+    }) if ( $@ );
 
-    print $desktop->encode_json({
+    $desktop->out({
         success => 'true',
         result => \@t,
     });
-
-    return 1;
 }
 
 sub cmd_exec {
@@ -105,20 +110,24 @@ sub cmd_exec {
     my $db = $self->db( $dbname );
 
     my $res;
-    if ( $args ) {
-        $res = $db->doQuery( $sql, $args );
-    } else {
-        $res = $db->doQuery( $sql );
-    }
-    print $desktop->encode_json({
-        error => $db->{error},
-    }), return 1 if ( $db->{error} );
+    eval {
+        # this forces the db to use die, so we can trap it
+        $db->no_exceptions;
+        if ( $args ) {
+            $res = $db->doQuery( $sql, $args );
+        } else {
+            $res = $db->doQuery( $sql );
+        }
+        $db->use_exceptions;
+    };
+    return $desktop->out({
+        error => $@,
+    }) if ( $@ );
 
-    print $desktop->encode_json({
+    $desktop->out({
         success => 'true',
         result => $res,
     });
-    return 1;
 }
 
 1;

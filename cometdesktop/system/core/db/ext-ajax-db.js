@@ -54,12 +54,12 @@ Ext.data.AjaxDB = Ext.extend(Ext.data.SqlDB, {
 	},
 
 	onError : function(e, type, cb, scope, error){
-        log('sql query error '+(error ? error : ''));
+        log('sql error:'+(error ? error : ''));
 		Ext.callback(cb, scope, [false, e]);
 	},
 
 	onResult : function(e, type, cb, scope, res) {
-        log(Ext.encode(res));
+        log('sql result:'+Ext.encode(res));
 	    Ext.callback(cb, scope, [( type == 'exec' ? true : res ), e]);
 	},
 
@@ -74,7 +74,7 @@ Ext.data.AjaxDB = Ext.extend(Ext.data.SqlDB, {
         if ( args )
             params.args = Ext.encode( args );
         
-        log(Ext.encode(params));
+        log('sql query:'+Ext.encode(params));
 
         req = Ext.Ajax.request({
             url: 'connect.pl',

@@ -20,6 +20,7 @@ sub new {
     my $class = shift;
     my $self = bless( {
         last_query => '(no query available)',
+        use_exceptions => 1,
     }, $class || ref( $class ) );
     
     $self->{dbh} = $self->get_dbh( @_ );
@@ -31,10 +32,11 @@ sub error {
     my $self = shift;
 	my $dbh = defined $self->{use_dbh} ? $self->{use_dbh} : "dbh";
     my $error = defined $_[0] ? shift : $self->{$dbh}->errstr;
-
+    $error .= '  Query:'.$self->{last_query};
     return CometDesktop::Exception->new(
         error => $error,
-        @_
+        throw_die => !$self->{use_exceptions},
+        @_,
     );
 }
 
@@ -68,6 +70,14 @@ sub quote_in {
 	return $query;
 }
 
+sub no_exceptions {
+    shift->{use_exceptions} = 0;
+}
+
+sub use_exceptions {
+    shift->{use_exceptions} = 1;
+}
+
 =item get_dbh($dbistring,$user,$pass)
 
 C<$dbh>
@@ -87,7 +97,7 @@ sub get_dbh {
 	my $dbh;
 
 	eval {
-        $dbh = DBI->connect("dbi:$dbistring",$username,$passwd, { RaiseError => 0 } )
+        $dbh = DBI->connect('dbi:'.$dbistring,$username,$passwd, { RaiseError => 1 } )
     };
 	if ( $@ || !$dbh ) {
 		my $error = $@ || $DBI::err;

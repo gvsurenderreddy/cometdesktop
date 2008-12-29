@@ -520,11 +520,11 @@ Ext.Desktop = function(app) {
                     });
                     var sc = document.createElement( 'scr'+'ipt' );
                     document.body.appendChild( sc );
-                    sc.onload = function() { log('CometDesktop v'+desktopConfig.version); log('Detected Browser/OS:'+app.browserOS); };
+                    sc.onload = function() { log('CometDesktop v'+app.version); log('Detected Browser/OS:'+app.browserOS); };
                     sc.setAttribute( 'type', 'text/javascript' );
                     sc.setAttribute( 'src', 'lib/debug.js' );
                 } else {
-                    log('CometDesktop v'+desktopConfig.version);
+                    log('CometDesktop v'+app.version);
                     log('Detected Browser/OS:'+app.browserOS);
                 }
                 return;

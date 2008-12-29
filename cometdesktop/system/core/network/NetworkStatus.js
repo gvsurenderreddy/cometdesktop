@@ -82,10 +82,12 @@ Ext.app.NetworkStatus = Ext.extend(Ext.app.Module, {
     activity: function( off ) {
         if ( off || this.isOn ) {
             this.isOn = false;
-            this.trayButton.setIconClass('network-status-icon');
+            if ( this.trayButton )
+                this.trayButton.setIconClass('network-status-icon');
         } else {
             this.isOn = true;
-            this.trayButton.setIconClass('network-status-act-icon');
+            if ( this.trayButton )
+                this.trayButton.setIconClass('network-status-act-icon');
             /*
             if ( this.timer )
                 clearTimeout( this.timer );
@@ -101,6 +103,5 @@ Ext.app.NetworkStatus = Ext.extend(Ext.app.Module, {
 
 });
     
-Ext.app.config.startupModules.push('Ext.app.NetworkStatus');
-
+app.register('Ext.app.NetworkStatus');
 

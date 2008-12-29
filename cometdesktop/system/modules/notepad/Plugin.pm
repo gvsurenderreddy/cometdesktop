@@ -20,11 +20,13 @@ sub request {
     my ( $self, $task, $what ) = @_;
 
     if ( $desktop->user->logged_in && $task && $self->can( 'cmd_'.$task ) ) {
+        $desktop->content_type( 'text/javascript' );
         my $cmd = 'cmd_'.$task;
-        return $self->$cmd( $what );
+        return $desktop->out({ success => 'false' }) unless ( $self->$cmd( $what ) );
+        return;
     }
 
-    return 0;
+    $desktop->error( 'no such task' )->throw;
 }
 
 sub new {
@@ -35,31 +37,24 @@ sub new {
 sub cmd_fetch {
     my ( $self, $what ) = @_;
 
-    my %valid = (
-        notes => 1,
-    );
-    return unless ( $valid{$what} );
+    return unless ( $what eq 'notes' );
     
     my @t;
     $desktop->db->arrayHashQuery(qq|
-    SELECT
-        id, note
-    FROM 
-        qo_notes
-    WHERE
-        qo_members_id=?
-    ORDER BY id
+        SELECT
+            id, note
+        FROM 
+            qo_notes
+        WHERE
+            qo_members_id=?
+        ORDER BY id
     |,[$desktop->user->user_id],\@t);
 
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        return 0;
-    }
-
-    print $desktop->encode_json({
+    $desktop->out({
         success => 'true',
         notes => \@t,
     });
+    return 1;
 }
 
 
@@ -100,26 +95,19 @@ sub cmd_save {
     } else {
         # new note, insert it
         $desktop->db->insertWithHash('qo_notes',$data,\$id);
-        if ( $id ) {
-            warn "new note: $id";
-        }
-    }
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        return 0;
     }
 
-    print $desktop->encode_json({
+    $desktop->out({
         success => 'true',
         noteId => $id,
     });
+    return 1;
 }
 
 sub cmd_delete {
     my ( $self, $id ) = @_;
 
-    return 0 unless ( $id );
-    return 0 unless ( $id =~ m/^\d+$/ );
+    return 0 unless ( defined $id && $id =~ m/^\d+$/ );
 
     $desktop->db->doQuery(qq|
         DELETE
@@ -128,10 +116,6 @@ sub cmd_delete {
         WHERE
             qo_members_id=? AND id=?
     |,[$desktop->user->user_id,$id]);
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        return 0;
-    }
     $desktop->db->doQuery(qq|
         DELETE
         FROM
@@ -140,8 +124,6 @@ sub cmd_delete {
             qo_members_id=? AND name=?
     |,[$desktop->user->user_id,"notepad-win-$id"]);
 
-    print $desktop->encode_json({
-        success => 'true'
-    });
+    $desktop->out({ success => 'true' });
 }
 1;

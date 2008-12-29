@@ -20,11 +20,13 @@ sub request {
     my ( $self, $task, $what ) = @_;
 
     if ( $desktop->user->logged_in && $task && $self->can( 'cmd_'.$task ) ) {
+        $desktop->content_type( 'text/javascript' );
         my $cmd = 'cmd_'.$task;
-        return $self->$cmd( $what );
+        $self->$cmd( $what );
+        return;
     }
 
-    return 0;
+    $desktop->error( 'no such task' )->throw;
 }
 
 sub new {
@@ -38,7 +40,7 @@ sub cmd_fetch {
     my %valid = (
         all => 1,
     );
-    return unless ( $valid{$what} );
+    $desktop->error( 'var what is required' )->throw unless ( $valid{$what} );
     
     my $ud = $desktop->user->user_data;
 
@@ -51,25 +53,18 @@ sub cmd_fetch {
     WHERE
         qo_members_id=?
     |,[$ud->{id}],$state);
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        return 0;
-    }
 
     while( my ( $k, $v ) = each( %$state ) ) {
         $state->{$k} = $desktop->decode_json( $v );
     }
 
-    print $desktop->encode_json({
-        success => 'true',
-        state => $state,
-    });
+    $desktop->out({ success => 'true', state => $state });
 }
 
 sub cmd_set {
     my ( $self, $name ) = @_;
 
-    return unless ( defined $name );
+    $desktop->error( 'var what is required' )->throw unless ( defined $name );
 
     my $value = $desktop->cgi_param('value');
         
@@ -99,14 +94,8 @@ sub cmd_set {
         $data->{name} = $name;
         $desktop->db->insertWithHash('qo_registry',$data);
     }
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        return 0;
-    }
 
-    print $desktop->encode_json({
-        success => 'true',
-    });
+    $desktop->out({ success => 'true' });
 }
 
 

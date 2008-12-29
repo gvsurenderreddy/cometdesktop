@@ -45,7 +45,7 @@ Ext.app.Registry = Ext.extend(Ext.app.Module, {
 			text: 'Registry'
 		};
 
-        Ext.state.Manager.setProvider(new Ext.state.RegistryProvider( { state:desktopConfig.registry } ));
+        Ext.state.Manager.setProvider(new Ext.state.RegistryProvider( { state: app.config.registry } ));
 	}
 
 });

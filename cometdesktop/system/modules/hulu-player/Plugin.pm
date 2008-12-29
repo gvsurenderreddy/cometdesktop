@@ -26,11 +26,13 @@ sub request {
     my ( $self, $task, $what ) = @_;
 
     if ( $desktop->user->logged_in && $task && $self->can( 'cmd_'.$task ) ) {
+        $desktop->content_type( 'text/javascript' );
         my $cmd = 'cmd_'.$task;
-        return $self->$cmd( $what );
+        return $desktop->out({ success => 'false' }) unless ( $self->$cmd( $what ) );
+        return;
     }
 
-    return 0;
+    $desktop->error( 'no such task' )->throw;
 }
 
 sub new {
@@ -42,7 +44,7 @@ sub new {
         from => 'David Davis <xantus@xantus.org>',
         referrer => 'http://cometdesktop.com/',
         cache_params => {
-            cache_root => $desktop->pwd.'tmp',
+            cache_root => $desktop->tempdir,
             namespace => "www-hulu",
             default_expires_in => "1h",
         },
@@ -82,7 +84,7 @@ sub cmd_fetch {
     my $res = $self->ua->get( 'http://www.hulu.com/feed'.$what );
 
     unless ( $res->is_success ) {
-        print $desktop->encode_json({
+        $desktop->out({
             success => 'false',
             error => 'Response from hulu server:'.$res->status_line,
         });
@@ -94,13 +96,13 @@ sub cmd_fetch {
     unless ( $xml =~ m/^<(rss|\?xml)/ ) {
         if ( $xml =~ m/down for maintenance/i ) {
             warn "hulu is down for maintenance";
-            print $desktop->encode_json({
+            $desktop->out({
                 success => 'false',
                 error => 'Hulu.com is down for maintenance, please try again later',
             });
         } else {
             warn "not xml!: ".substr($xml,0,100);
-            print $desktop->encode_json({
+            $desktop->out({
                 success => 'false',
                 error => 'Response from hulu server was not xml/rss',
             });
@@ -194,7 +196,7 @@ sub cmd_fetch {
     if ( $private ) {
         warn "not xml!: $xml";
         # TODO get petdance to add an expire method
-        print $desktop->encode_json({
+        $desktop->out({
             success => 'false',
             error => 'This feed is private.  Change the privacy and wait 1h before retrying',
         });
@@ -210,10 +212,7 @@ sub cmd_fetch {
             qo_hulu_starred
         WHERE qo_members_id=? AND id IN (|.join(',',( map { '?' } @ids ) ).')',
         [$desktop->user->user_id,@ids],$starred);
-        if ( $desktop->db->{error} ) {
-            warn $desktop->db->{error};
-        }
-    
+        
         if ( keys %$starred ) {
             foreach ( @shows ) {
                 next unless ( $_->{id} && $starred->{ $_->{id} } );
@@ -222,7 +221,7 @@ sub cmd_fetch {
         }
     }
 
-    print $desktop->encode_json({
+    $desktop->out({
         success => 'true',
         shows => \@shows,
     });
@@ -240,14 +239,6 @@ sub fetch_starred {
         qo_hulu_starred
     WHERE qo_members_id=?
     |,[$desktop->user->user_id],$starred);
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        print $desktop->encode_json({
-            success => 'false',
-            error => 'DB Error, please try again later',
-        });
-        return 1;
-    }
 
     my @shows;
     foreach ( values %$starred ) {
@@ -255,7 +246,7 @@ sub fetch_starred {
         $shows[-1]->{starred} = JSON::Any::true;
     }
 
-    print $desktop->encode_json({
+    $desktop->out({
         success => 'true',
         shows => \@shows,
     });
@@ -274,17 +265,8 @@ sub cmd_star {
         id => $what,
         record => $record,
     });
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        print $desktop->encode_json({
-            success => 'false',
-        });
-        return 1;
-    }
 
-    print $desktop->encode_json({
-        success => 'true',
-    });
+    $desktop->out({ success => 'true' });
     return 1;
 }
 
@@ -296,17 +278,8 @@ sub cmd_unstar {
     $desktop->db->doQuery(qq|
         DELETE FROM qo_hulu_starred WHERE qo_members_id=? AND id=?
     |,[$desktop->user->user_id,$what]);
-    if ( $desktop->db->{error} ) {
-        warn $desktop->db->{error};
-        print $desktop->encode_json({
-            success => 'false',
-        });
-        return 1;
-    }
 
-    print $desktop->encode_json({
-        success => 'true',
-    });
+    $desktop->out({ success => 'true' });
     return 1;
 }
 1;
