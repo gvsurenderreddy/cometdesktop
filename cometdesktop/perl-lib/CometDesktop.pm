@@ -716,7 +716,6 @@ sub get_config {
                 lastSessionDuration => $user->session_duration,
             },
             ip => $ENV{REMOTE_ADDR},
-            sessionId => $user->session_id,
             localmode => $self->localmode,
 #            dip => unpack( 'N', inet_aton( $ENV{REMOTE_ADDR} ) ), # decimal ip
 #            env => ( $self->user->is_admin ? \%ENV : {} ),
