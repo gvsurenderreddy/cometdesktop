@@ -55,11 +55,11 @@ sub import {
     }
 
     # load the config and set optional include dirs before loading any modules
-    CometDesktop->new( imported_pkg => $package ) unless ( defined( $singleton ) );
+    __PACKAGE__->new( imported_pkg => $package ) unless ( defined( $singleton ) );
 
     unshift( @modules, 'Common', '-Time::HiRes[time]' );
 
-    @modules = map { s/^-// ? $_ : 'CometDesktop::'.$_  } @modules;
+    @modules = map { s/^-// ? $_ : __PACKAGE__.'::'.$_  } @modules;
 
     foreach my $module ( @modules ) {
         my $code;
