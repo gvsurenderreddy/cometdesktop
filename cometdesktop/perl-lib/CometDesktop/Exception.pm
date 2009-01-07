@@ -70,7 +70,7 @@ sub html_throw {
         require Data::Dumper;
         $content .= Data::Dumper->Dump([$self->{dump_var}]);
     }
-    $content .= "</pre></frameset></body></html>";
+    $content .= "</pre></body></html>";
     $desktop->header(
         "Status: 500",
 #        'Content-Length: '.length($content)
