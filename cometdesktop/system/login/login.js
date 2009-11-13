@@ -225,7 +225,7 @@ Login = function(){
                 
                 set_cookie('lastUsername', a.result.userName || '', a.result.days || '', path, '.' + document.domain );
                 
-                if ( a.result.success ) {
+                if ( a.result.success && ( a.result.success == 'true' || a.result.success == true ) ) {
     				// set the cookies
 	    			set_cookie('sessionId', a.result.sessionId, a.result.days || '', path, '.' + document.domain );
 		        } else {
