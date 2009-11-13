@@ -905,7 +905,7 @@ sub encode_json {
 
 sub js_compress {
     my ( $self, $js ) = @_;
-    $js =~ s!/\*.*\*/!!xsmg;
+#    $js =~ s!/\*.*\*/!!xsmg;
     require JavaScript::Minifier;
     return JavaScript::Minifier::minify(
         input => $js,
